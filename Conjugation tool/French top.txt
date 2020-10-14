@@ -1,0 +1,100 @@
+1	être	to be
+2	avoir	to have
+3	pouvoir	to be able (can)
+4	faire	to do, to make
+5	mettre	to put, to place
+6	dire	to say, to tell
+7	devoir	to have to , must, to owe
+8	prendre	to take, to catch, to capture
+9	donner	to give, to produce
+10	aller	to go
+11	vouloir	to want, to wish
+12	savoir	to know
+13	falloir	to have to
+14	voir	to see
+15	demander	to ask, to request
+16	trouver	to find, to discover
+17	rendre	to return (something), to give back
+18	venir	to come
+19	passer	to pass, to go past
+20	comprendre	to understand, to include, to comprehend
+21	rester	to stay, to remain
+22	tenir	to hold, to keep
+23	porter	to carry, to wear
+24	parler	to speak, to talk
+25	montrer	to show, to display
+26	continuer	to continue
+27	penser	to think
+28	suivre	to follow, to pay attention
+29	connaître	to know, to be acquainted with
+30	croire	to believe (in)
+31	commencer	to begin, to start, to commence
+32	compter	to count
+33	entendre	to hear, to understand
+34	attendre	to wait, to expect
+35	remettre	to put back (on), to replace, to deliver
+36	appeler	to call, to contact
+37	permettre	to permit, to allow, to enable
+38	occuper	to occupy, to take up (space/time)
+39	devenir	to become, to grow (into), to turn (into)
+40	partir	to leave, to depart, to proceed
+41	décider	to decide, to persuade
+42	arriver	to arrive, to happen
+43	servir	to serve
+44	sembler	to seem
+45	revenir	to return, to come back
+46	laisser	to leave, to allow, to let
+47	recevoir	to receive, to welcome
+48	répondre	to answer, to reply
+49	vivre	to live
+50	rappeler	to call back, to remind
+51	présenter	to present, to introduce
+52	accepter	to accept
+53	agir	to act
+54	poser	to put down, to pose, to lay (something) down
+55	jouer	to play, to act, to gamble
+56	reconnaître	to recognize, to acknowledge
+57	choisir	to choose, to select
+58	toucher	to touch, to feel, to affect
+59	aimer	to like, to love
+60	retrouver	to find, to regain, to meet up
+61	perdre	to lose, to waste
+62	expliquer	to explain, to account for
+63	considérer	to consider, to study
+64	ouvrir	to open (up)
+65	gagner	to win, to gain, to earn
+66	exister	to exist
+67	refuser	to refuse
+68	lire	to read
+69	réussir	to succeed
+70	changer	to change, to alter
+71	travailler	to work
+72	représenter	to represent, to depict, to portray
+73	assurer	to secure, to assure, to insure
+74	essayer	to try, to attempt
+75	empêcher	to prevent, to stop
+76	sortir	to go out, to leave, to exit, to come out
+77	reprendre	to resume, to recover, to take back
+78	mener	to lead, to conduct
+79	appartenir	to belong, to concern
+80	risquer	to risk
+81	concerner	to concern, to affect
+82	apprendre	to learn, to teach, to hear of
+83	rencontrer	to meet, to encounter
+84	créer	to create, to build
+85	obtenir	to obtain, to get
+86	chercher	to look for, to seek
+87	entrer	to enter, to go into
+88	proposer	to suggest, to propose, to offer
+89	apporter	to bring, to cause
+90	utiliser	to use, to employ
+91	atteindre	to reach, to attain, to achieve
+92	tenter	to tempt
+93	importer	to import, to matter
+94	ajouter	to add
+95	produire	to produce
+96	préparer	to prepare (something), to make
+97	relever	to raise, to stand up, to pick up
+98	écrire	to write
+99	défendre	to defend, to stand up for, to forbid
+100	tirer	to pull, to draw (curtains, sword), to fire (gun), to print
