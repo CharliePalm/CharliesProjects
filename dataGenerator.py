@@ -141,7 +141,8 @@ class normalPopulation(DataGen):
 
 
     def recursiveFix(self):
-        e
+        #TODO: add fix for max and in
+        return
 
     def sdCalc(self):
         return super().sdCalc()
