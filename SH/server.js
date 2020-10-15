@@ -1,3 +1,5 @@
+
+// define global variables and packages
 var express = require('express');
 var http = require('http');
 var path = require('path');
@@ -6,37 +8,61 @@ var players = {};
 var app = express();
 var server = http.Server(app);
 var io = socketIO(server);
-var body = "";
-var playerName = "";
+
 var gameStarted = false;
-var fascistCardsPlayed = 0;
-var liberalCardsPlayed = 0;
 var deck = [];
 var first = true;
 var firstID;
-var jas = {};
+var games = {};
+
 app.set('port', 5000);
 app.use('/static', express.static(__dirname + '/static'));
 // Routing
 app.get('/', function(request, response) {
-  response.sendFile(path.join(__dirname, 'index.html'));
+  response.sendFile(path.join(__dirname, 'prePlayView.html'));
 });
 
 // called when a player enters the game
-app.post("/PrePlayView.html", function(req, res) {
-  if (gameStarted) {
-    res.sendFile(path.join(__dirname, 'index.html'));
-    return;
-  }
-  req.on('data', function (chunk) {
-    body += chunk;
+app.post("/userView.html", function(req, res) {
+  var body = "";
+  req.on('data', function(char) {
+    body += char;
   });
 
   req.on('end', function () {
-    playerName = body.substr(body.indexOf("=") + 1, body.length);
+
+    var playerName = body.substr(body.indexOf("=") + 1, body.indexOf("&") - 4);
+    var id = body.substr(body.indexOf("&") + 4, body.length);
     body = "";
-    res.sendFile(path.join(__dirname, 'PrePlayView.html'));
+    if (id == '') {
+      id = generateID();
+      games[id] = new Game();
+    }
+
+    var options = {
+      headers: {
+        'test': 'this is a test',
+        'id': id,
+        'names': playerName
+      }
+    };
+    res.sendFile(path.join(__dirname, 'userView.html'),
+      options,
+      function(error) {
+        if (error) {
+          console.log("error");
+
+        }
+    });
+
   });
+
+  if (gameStarted) {
+    res.sendFile(path.join(__dirname, 'prePlayView.html'));
+    return;
+  }
+
+
 });
 
 // starts the game after button push
@@ -51,15 +77,20 @@ app.post('/gameview.html', function(req, res) {
   //console.log(res.sendFile(path.join(__dirname, '/index.html')));
 });
 
-
+// io inputs: collections of user interaction with server
 io.on('connection', function(socket) {
 
-  socket.on('newPlayer', function() {
+  socket.on('a', function(intg) {
+    console.log(intg)
+    console.log(socket.id);
+  });
+
+  socket.on('newPlayer', function(first, id) {
     if (first) {
       first = false;
       firstID = socket.id;
     }
-    game.addPlayer(new Player(playerName, socket.id));
+    games[id].addPlayer(new Player('playerName', socket.id));
     playerName = "";
     io.emit('newPlayer', game.players);
   });
@@ -157,6 +188,9 @@ io.on('connection', function(socket) {
 
 });
 
+function generateID() {
+  return Math.random().toString(36).substr(2, 9);
+}
 
 function jaornein(id) {
   if (game.numJas > game.numNeins) {
@@ -254,6 +288,7 @@ server.listen(5000, function() {
   console.log('Starting server on port 5000');
 });
 
+// class for organizing players
 class Player {
   constructor(name, id) {
     this.name = name,
@@ -266,6 +301,7 @@ class Player {
   }
 }
 
+// class for organizing game actions and variables
 class Game {
   constructor() {
     console.log('initializing game');
@@ -291,6 +327,7 @@ class Game {
     this.numJas = 0;
     this.numNeins = 0;
   }
+
   addPlayer(player) {
     this.numPlayers++;
     this.numCurrPlayers++;
@@ -410,4 +447,3 @@ class Game {
     this.discards = [];
   }
 }
-var game = new Game();
