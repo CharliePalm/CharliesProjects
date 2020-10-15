@@ -1,7 +1,7 @@
 # CharliesProjects
 A series of projects that I've been working on including:
 
-An attempt at bringing the popular tabletop game Secret Hitler to the web through node.JS
+An attempt at bringing the popular tabletop game Secret Hitler to the web through node.JS (Currently undergoing rehaul)
 
 A python data generation tool based on given constraints
 
