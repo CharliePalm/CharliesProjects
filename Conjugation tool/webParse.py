@@ -29,6 +29,9 @@ def getDef(verb):
             definitions.append(soup[j:i])
     return definitions[1:3]
 
+#TODO: use user inputted file as well as expand format acceptance
+
+#This version uses the included file, but the json was created using the 'french top.txt' file
 def parse():
     with open("french-verb-conjugation.csv") as file:
         reader = csv.reader(file, delimiter=',')
