@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <script src='/socket.io/socket.io.js'></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 <script>
 
-const socket = io.connect()
-socket.emit('a', 2);
-  var req = new XMLHttpRequest();
-  console.log(req);
-  var headers = req.getAllResponseHeaders();
+const socket = io.connect();
+var req = new XMLHttpRequest();
+req.open('GET', document.location, false);
+req.send(null);
+var headers = req.getAllResponseHeaders().toLowerCase();
+alert(headers);
   //alert(console.log(headers));
 </script>
 <style type="text/css">
@@ -25,7 +27,8 @@ html , body {
 
 </style>
 <body>
-<h id='id'>test</h>
+<h id='options'></h>
+<p>{{test}}</p>
 <h1 id='top'>Waiting for players!</h1>
   <p1 id='sub'>Currently we have:</p1>
   <p2 id='nameLabel'></p2>

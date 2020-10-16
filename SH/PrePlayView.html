@@ -1,7 +1,9 @@
 <html>
 <script src='/socket.io/socket.io.js'></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 <script>const socket = io.connect();</script>
+
+
+
   <head><h1>It's Secret Hitler Time!</h1>
     <title>Secret Hitler</title>
     <style type="text/css">
@@ -20,25 +22,26 @@
 
   <h1 id='test'></h1>
   <p>
-
-    <form modelAttribute='api' id='form' action=/userView.html target='_blank' method='post'>
+    <form action="/userView.html" target='_blank' method='post'>
     <label for="name">Name:</label><br>
-    <input type="text" id="name" name="name"><br>
-    <label for="name">ID code: (leave blank to create game)</label><br>
-    <input type="text" id="id" name="id"><br>
+    <input type="text" id="name" name="name"></input><br>
+    <label for="id">ID code: (leave blank to create game)</label><br>
+    <input type="text" id="id" name="id"></input><br>
     <input type="submit" id='submit' value="Start!">
     </form>
-
   </p>
     <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
     <canvas id="canvas"></canvas>
   </body>
+  <script>
+    function action() {
+      var name = document.getElementById('name').value;
+      var id = document.getElementById('id').value;
+      if (id == "") {
+        socket.emit('newGame', name);
+      }
+    }
+  </script>
 </html>
-<script>
-  $('#submit').on('click',function() {
-    console.log(id);
-    socket.emit('newGame', 1);
-  });
-</script>

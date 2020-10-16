@@ -5,10 +5,10 @@ var http = require('http');
 var path = require('path');
 var socketIO = require('socket.io');
 var players = {};
+var ajax = require('ajax');
 var app = express();
 var server = http.Server(app);
 var io = socketIO(server);
-
 var gameStarted = false;
 var deck = [];
 var first = true;
@@ -17,6 +17,8 @@ var games = {};
 
 app.set('port', 5000);
 app.use('/static', express.static(__dirname + '/static'));
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html');
 // Routing
 app.get('/', function(request, response) {
   response.sendFile(path.join(__dirname, 'prePlayView.html'));
@@ -30,31 +32,20 @@ app.post("/userView.html", function(req, res) {
   });
 
   req.on('end', function () {
-
-    var playerName = body.substr(body.indexOf("=") + 1, body.indexOf("&") - 4);
+    var playerName = body.substr(body.indexOf("=") + 1, body.indexOf("&") - 5);
     var id = body.substr(body.indexOf("&") + 4, body.length);
     body = "";
-    if (id == '') {
-      id = generateID();
-      games[id] = new Game();
-    }
 
     var options = {
       headers: {
-        'test': 'this is a test',
+        'x-timestamp': Date.now(),
+        'x-sent': true,
         'id': id,
         'names': playerName
       }
-    };
-    res.sendFile(path.join(__dirname, 'userView.html'),
-      options,
-      function(error) {
-        if (error) {
-          console.log("error");
-
-        }
-    });
-
+    }
+    res.sendFile(path.join(__dirname, 'userView.html'), options);
+    res.render('options', options);
   });
 
   if (gameStarted) {
@@ -80,9 +71,10 @@ app.post('/gameview.html', function(req, res) {
 // io inputs: collections of user interaction with server
 io.on('connection', function(socket) {
 
-  socket.on('a', function(intg) {
-    console.log(intg)
-    console.log(socket.id);
+  socket.on('newGame', function(name) {
+    id = generateID();
+    games[id] = new Game();
+
   });
 
   socket.on('newPlayer', function(first, id) {

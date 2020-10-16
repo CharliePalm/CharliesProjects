@@ -4,8 +4,11 @@
   "description": "sockets",
   "main": "server.js",
   "dependencies": {
+    "ejs": "^3.1.5",
     "express": "^4.17.1",
-    "socket.io": "^2.3.0"
+    "http": "0.0.1-security",
+    "socket.io": "^2.3.0",
+    "stack": "^0.1.0"
   },
   "devDependencies": {},
   "scripts": {
