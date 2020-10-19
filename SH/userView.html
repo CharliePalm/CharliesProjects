@@ -1,34 +1,16 @@
 <!DOCTYPE html>
 <script src='/socket.io/socket.io.js'></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 <script>
-
-const socket = io.connect();
-var req = new XMLHttpRequest();
-req.open('GET', document.location, false);
-req.send(null);
-var headers = req.getAllResponseHeaders().toLowerCase();
-alert(headers);
-  //alert(console.log(headers));
+  const socket = io.connect();
+  const playerID = socket.request.session.id;
+  socket.emit('waiting');
 </script>
-<style type="text/css">
-html , body {
-  background: #212121;
-  color: #fff;
-  margin: 0;
-  padding: 0;
-}
-#canvas {
-  position: absolute;
-  left: 0; right: 0; top: 0; bottom: 0;
-  margin: auto;
-}
+<link rel="stylesheet" type='text/css'z href="style/style.css"/>
 
-
-</style>
 <body>
-<h id='options'></h>
-<p>{{test}}</p>
+<h id='id'>Your game ID is:
+<p1 id=idCode></p1>
+</h>
 <h1 id='top'>Waiting for players!</h1>
   <p1 id='sub'>Currently we have:</p1>
   <p2 id='nameLabel'></p2>
@@ -71,29 +53,41 @@ html , body {
 </body>
 <script>
 
+
+// adds a player to the screen
+socket.on('newPlayer', function(game, id) {
+  var out = "<br>";
+  for (var key in game.players) {
+    out += game.players[key].name + '<br>';
+  }
+
+  document.getElementById('names').innerHTML = out;
+  document.getElementById('idCode').innerHTML = id;
+
+  });
   // initializes the primary game view
-  socket.on('gamestart', function(players, id, firstID) {
+  socket.on('gamestart', function(game, firstID) {
     document.getElementById('f').innerHTML = 'Fascists played:<br>';
     document.getElementById('l').innerHTML = 'Liberals played:';
     var elem = document.getElementById('everyone');
     elem.parentNode.removeChild(elem);
     var bool = false;
     var callID;
-    for (var key in players) {
+    for (var key in game.players) {
       callID = key;
       break;
     }
     document.getElement
     document.getElementById('top').innerHTML = "Your super secret role is:";
-    document.getElementById('nameLabel').innerHTML = '<br><br>Current Players:';
+    document.getElementById('nameLabel').innerHTML = '<br><br>Current game.players:';
 
-    if (players[socket.id].isHitler) {
-      // when there's only 5 or 6 players hitler know his fascists
-      if (Object.keys(players).length == 5 || Object.keys(players).length == 6) {
+    if (game.players[playerID].isHitler) {
+      // when there's only 5 or 6 game.players hitler know his fascists
+      if (Object.keys(game.players).length == 5 || Object.keys(game.players).length == 6) {
         var otherFasc = "";
-        for (var key in players) {
-          if (players[key].isFascist) {
-              otherFasc = players[key].name;
+        for (var key in game.players) {
+          if (game.players[key].isFascist) {
+              otherFasc = game.players[key].name;
               break;
             }
           }
@@ -101,17 +95,19 @@ html , body {
       } else {
         document.getElementById('sub').innerHTML = "HITLER";
       }
-    } else if (players[socket.id].isFascist) {
+      // otherwise he doesn't
+    } else if (game.players[playerID].isFascist) {
       var otherFascists = "";
       var moreFasc = false;
-      for (var key in players) {
+
+      for (var key in game.players) {
         var hitler;
-        if (players[key].isFascist) {
-          if (players[key].isHitler) {
-            hitler = players[key].name;
+        if (game.players[key].isFascist) {
+          if (game.players[key].isHitler) {
+            hitler = game.players[key].name;
           } else {
             moreFasc = true;
-            otherFascists += players[key].name + " and ";
+            otherFascists += game.players[key].name + " and ";
           }
         }
       }
@@ -126,39 +122,39 @@ html , body {
     // adds lines between names and role
     document.getElementById('names').innerHTML = "<br><br><br>"
 
-    for (var key in players) {
-      if (key == socket.id) {
+    for (var key in game.players) {
+      if (key == playerID) {
         continue;
       } else {
         document.getElementById('names').innerHTML += players[key].name + "<br><br>";
       }
     }
-    if (firstID == socket.id) {
-      socket.emit('newpres', true);
+    if (firstID == playerID) {
+      socket.emit('newpres', true, game.ID);
       bool = false;
     }
     bool = false;
   });
 
-  socket.on('newpres', function(pres, players, first, game) {
+  socket.on('newpres', function(game, pres, first) {
     destroyChoice();
     destroyPostChoice();
     destroyCards();
-    if (socket.id == pres.id) {
+    if (playerID == pres.id) {
       if (first) {
         document.getElementById('pres').innerHTML = "You have been selected to be the first President!";
       } else {
         document.getElementById('pres').innerHTML = "You are the new President!<br>";
       }
       document.getElementById('choice').innerHTML = 'Pick your chanecellor:<br>';
-      for (key in players) {
+      for (key in game.players) {
         let i = key;
         const id = key;
-        if (key == socket.id) {
+        if (key == playerID) {
           continue;
         } else {
           var x = document.createElement("BUTTON");
-          var t = document.createTextNode(players[key].name);
+          var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
             chancellor(id, game);
@@ -176,13 +172,13 @@ html , body {
     }
   });
 
-  socket.on('vote', function(currChance, game) {
+  socket.on('vote', function( game) {
     destroyI();
     destroyPostChoice();
-    if (!(socket.id in game.players)) {
+    if (!(playerID in game.players)) {
       return;
     }
-    document.getElementById('pres').innerHTML = game.currPres.name + ' has chosen ' + currChance.name + ' to be Chancellor. ja or nein?<br>';
+    document.getElementById('pres').innerHTML = game.currPres.name + ' has chosen ' + game.currChance.name + ' to be Chancellor. ja or nein?<br>';
     document.getElementById('pres').innerHTML += "Remember: this vote is final!";
     var x = document.createElement("BUTTON");
     var t = document.createTextNode("nein!");
@@ -190,7 +186,7 @@ html , body {
     x.addEventListener('click', function() {
       destroyChoice();
       document.getElementById('choice').innerHTML = 'you voted nein!';
-      socket.emit('nein');
+      socket.emit('nein', game);
     })
     var element = document.getElementById('choice');
     element.append(x);
@@ -201,7 +197,7 @@ html , body {
     x.addEventListener('click', function() {
       destroyChoice();
       document.getElementById('choice').innerHTML = 'you voted ja!';
-      socket.emit('ja', currChance.id);
+      socket.emit('ja', game);
     })
 
     var element = document.getElementById('choice');
@@ -219,6 +215,13 @@ html , body {
     socket.emit('newpres', false);
   });
 
+  // game is over as someone disconnected
+  socket.on('dc', function(game) {
+    document.getElementById('top').innerHTML = "Nobody wins! Woohoo!";
+    listPlayerRoles(game);
+  });
+
+  // game is over
   socket.on('end', function(game, fasc) {
     if (fasc == 2) {
       document.getElementById('top').innerHTML = game.currChance.name + " is hitler! FASCISTS WIN!";
@@ -229,6 +232,11 @@ html , body {
     } else {
       document.getElementById('top').innerHTML = 'The bullet found Hitler! LIBERALS WIN';
     }
+    listPlayerRoles(game);
+  });
+
+  //helper method for the two end games
+  function listPlayerRoles(game) {
     destroyAll();
     document.getElementById('names').innerHTML = "";
     document.getElementById('nameLabel').innerHTML = "";
@@ -244,28 +252,18 @@ html , body {
     document.getElementById('sub').innerHTML = "Fascists: " + fascists + "<br>";
     document.getElementById('sub').innerHTML += 'liberals: ' + liberals + '<br><br><br>';
     document.getElementById('sub').innerHTML += 'please close out this tab and rejoin to start a new game';
-  });
+  }
 
-  // adds a player to the screen
-  socket.on('newPlayer', function(players) {
-    var out = "<br>";
-    for (var key in players) {
-      out += players[key].name + '<br>';
-    }
-    document.getElementById('names').innerHTML = out;
-    document.getElementById('id').innerHTML = players[socket.id].name;
 
-  });
-
-  socket.on('voteTally', function(jas, pres, players, pass) {
+  socket.on('voteTally', function(game, pass) {
     var ja = '';
     var nein = '';
     var i = 0;
-    for (var key in jas) {
-      if (jas[key]) {
-        ja += players[key].name + " ";
+    for (var key in game.jas) {
+      if (game.jas[key]) {
+        ja += game.players[key].name + " ";
       } else {
-        nein += players[key].name + " ";
+        nein += game.players[key].name + " ";
       }
       i++;
     }
@@ -273,8 +271,8 @@ html , body {
       document.getElementById('postChoice').innerHTML = 'VOTE PASSED!<br>Sending cards to ' + pres.name + '<br><br>';
       destroyChoice();
       destroyPres();
-      if (socket.id == pres.id) {
-        socket.emit('presCards');
+      if (playerID == pres.id) {
+        socket.emit('presCards', game);
       }
     } else {
       document.getElementById('postChoice').innerHTML = 'VOTE FAILED!<br>';
@@ -282,7 +280,7 @@ html , body {
     document.getElementById('postChoice').innerHTML += "In favor: " + ja + '<br>Opposed: ' + nein + '<br>';
   });
 
-  socket.on('presCards', function(cards) {
+  socket.on('presCards', function(game, cards) {
     console.log(cards);
     for (var i = 1; i < cards.length + 1; i++) {
       var x = document.createElement("BUTTON");
@@ -291,23 +289,21 @@ html , body {
       const htIndex = i;
       if (!cards[i - 1]) {
         console.log('fasc');
-        var t = document.createTextNode("FASCIST");
+        var t = document.createElement("FASCIST");
+        t.src = '/fascist.png';
         x.addEventListener('click', function() {
-          console.log('in event');
           destroySingleCard(htIndex);
           document.getElementById('card' + htIndex).innerHTML = 'Fascist sent';
-          socket.emit('presPass', cardButton);
-        })
+          socket.emit('presPass', game, cardButton);
+        });
       } else {
-        console.log('lib');
-
-        var t = document.createTextNode("LIBERAL");
+        var t = document.createElement("LIBERAL");
+        t.src = '/liberal.png';
         x.addEventListener('click', function() {
-          console.log('in event');
           destroySingleCard(htIndex);
           document.getElementById('card' + htIndex).innerHTML = 'Liberal sent';
-          socket.emit('presPass', cardButton);
-        })
+          socket.emit('presPass', game, cardButton);
+        });
       }
       x.append(t);
       var element = document.getElementById('card' + i);
@@ -316,9 +312,9 @@ html , body {
     }
   });
 
-  socket.on('passing', function(id) {
+  socket.on('passing', function(game) {
     destroyPostChoice();
-    if (socket.id == id) {
+    if (playerID == game.currChance.id) {
       document.getElementById('postChoice').innerHTML = 'The president just passed you:';
     } else {
       document.getElementById('postChoice').innerHTML = 'Chancellor is deciding on cards';
@@ -326,7 +322,7 @@ html , body {
     destroyCards();
   });
 
-  socket.on('chanceCards', function(cards) {
+  socket.on('chanceCards', function(cards, game) {
     for (var i = 1; i < cards.length + 1; i++) {
       var x = document.createElement("BUTTON");
       const cardButton = cards[i-1];
@@ -336,20 +332,20 @@ html , body {
         var t = document.createTextNode("FASCIST");
         x.addEventListener('click', function() {
           document.getElementById('card' + htIndex).innerHTML = 'Fascist played';
-          if (socket.emit('cardPlayed', cardButton)) {
+          if (socket.emit('cardPlayed', game, cardButton)) {
             destroyCards();
           }
-        })
+        });
       } else {
         const htIndex = i;
         var t = document.createTextNode("LIBERAL");
         x.addEventListener('click', function() {
           document.getElementById('card' + htIndex).innerHTML = 'Liberal played';
           console.log(cardButton);
-          if (socket.emit('cardPlayed', cardButton)) {
+          if (socket.emit('cardPlayed', game, cardButton)) {
             destroyCards();
           }
-        })
+        });
       }
       x.append(t);
       var element = document.getElementById('card' + i);
@@ -367,7 +363,7 @@ html , body {
       document.getElementById('cards').innerHTML += 'Fascist card!';
       document.getElementById('f').innerHTML += ' F';
     }
-    if (socket.id == game.currPres.id && !power) {
+    if (playerID == game.currPres.id && !power) {
       socket.emit('newpres', false);
     }
   });
@@ -381,11 +377,11 @@ html , body {
     document.getElementById('cards').innerHTML += 'Fascist card!';
     document.getElementById('f').innerHTML += ' F';
     document.getElementById('cards').innerHTML += '<br>' + game.currPres.name + ' now gets an investigation.';
-    if (socket.id == game.currPres.id) {
+    if (playerID == game.currPres.id) {
       for (key in game.players) {
         let i = key;
         const id = key;
-        if (key != socket.id) {
+        if (key != playerID) {
           var x = document.createElement("BUTTON");
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
@@ -407,12 +403,12 @@ html , body {
     document.getElementById('cards').innerHTML += 'Fascist card!';
     document.getElementById('f').innerHTML += ' F';
     document.getElementById('cards').innerHTML += '<br>' + game.currPres.name + ' gets a special election!';
-    if (socket.id == game.currPres.id) {
+    if (playerID == game.currPres.id) {
       document.getElementById('choice').innerHTML += '<br>Pick the next president:<br>';
       for (key in game.players) {
         let i = key;
         const id = key;
-        if (key != socket.id) {
+        if (key != playerID) {
           var x = document.createElement("BUTTON");
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
@@ -434,12 +430,12 @@ html , body {
     document.getElementById('cards').innerHTML += 'Fascist card!';
     document.getElementById('f').innerHTML += ' F';
     document.getElementById('choice').innerHTML += '<br>' + game.currPres.name + ' has a bullet...<br>'
-    if (socket.id == game.currPres.id) {
+    if (playerID == game.currPres.id) {
       document.getElementById('choice').innerHTML += "Who dies?<br>"
       for (key in game.players) {
         let i = key;
         const id = key;
-        if (key == socket.id) {
+        if (key == playerID) {
           continue;
         } else {
           var x = document.createElement("BUTTON");
@@ -466,10 +462,9 @@ html , body {
 
   function chancellor(id, game) {
     if (game.currChance != null && (id == game.currChance.id || id == game.prevPres.id)) {
-      console.log(game.currChance.id);
       return;
     }
-    socket.emit("chance", id)
+    socket.emit("chance", id, game.id)
     destroyChoice();
   }
 
@@ -579,6 +574,6 @@ html , body {
   }
 
   function gameStart() {
-    socket.emit('gamestart');
+    socket.emit('gamestart', document.getElementById('idCode').innerHTML);
   }
 </script>

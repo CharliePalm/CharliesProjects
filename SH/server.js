@@ -1,27 +1,30 @@
 
 // define global variables and packages
-var express = require('express');
-var http = require('http');
-var path = require('path');
-var socketIO = require('socket.io');
-var players = {};
-var ajax = require('ajax');
-var app = express();
-var server = http.Server(app);
-var io = socketIO(server);
-var gameStarted = false;
-var deck = [];
-var first = true;
-var firstID;
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const socketIO = require('socket.io');
+const ajax = require('ajax');
+const session = require('express-session');
+const app = express();
+const server = http.Server(app);
+const io = socketIO(server);
+var connections = [];
 var games = {};
+var notInGame = {};
 
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+})
+
+const sessionMiddleware = session({ secret: 'BungaloBill', cookie: { maxAge: 60000 }});
+app.use(sessionMiddleware);
 app.set('port', 5000);
-app.use('/static', express.static(__dirname + '/static'));
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html');
-// Routing
-app.get('/', function(request, response) {
-  response.sendFile(path.join(__dirname, 'prePlayView.html'));
+//app.use('/static', express.static(__dirname + '/static'));
+app.use(express.static(__dirname + '/public'));
+// Routing on entry
+app.get('/', function(req, res) {
+  res.sendFile(path.join(__dirname, 'prePlayView.html'));
 });
 
 // called when a player enters the game
@@ -30,29 +33,37 @@ app.post("/userView.html", function(req, res) {
   req.on('data', function(char) {
     body += char;
   });
-
+  // parses user's input into id and name
   req.on('end', function () {
+    var asdh = getGameID(req.session.id)
+    console.log('req says ' + req.session.id)
     var playerName = body.substr(body.indexOf("=") + 1, body.indexOf("&") - 5);
     var id = body.substr(body.indexOf("&") + 4, body.length);
     body = "";
-
-    var options = {
-      headers: {
-        'x-timestamp': Date.now(),
-        'x-sent': true,
-        'id': id,
-        'names': playerName
+    // if id is blank then the user wants to join a new game
+    if (id == '') {
+      while (true) {
+        id = generateID();
+        if (games[id] == null) {
+          games[id] = new Game();
+          break;
+        }
       }
+
+      games[id].addPlayer(playerName, req.session.id);
+      games[id].firstID = req.session.id;
+      game.id = id;
+
+    } else { // join game with user inputted id
+      if (games[id] == null || games[id].players.length == 10) {
+        res.sendFile(path.join(__dirname, 'prePlayView.html'));
+        return;
+      }
+      games[id].addPlayer(playerName, req.session.id);
     }
-    res.sendFile(path.join(__dirname, 'userView.html'), options);
-    res.render('options', options);
+
+    res.sendFile(path.join(__dirname, 'userView.html'));
   });
-
-  if (gameStarted) {
-    res.sendFile(path.join(__dirname, 'prePlayView.html'));
-    return;
-  }
-
 
 });
 
@@ -69,91 +80,85 @@ app.post('/gameview.html', function(req, res) {
 });
 
 // io inputs: collections of user interaction with server
-io.on('connection', function(socket) {
+io.on('connect', function(socket) {
 
-  socket.on('newGame', function(name) {
-    id = generateID();
-    games[id] = new Game();
+  var playerID = socket.request.session.id;
+  playerID.connections++;
 
+  console.log('socket says ' + playerID)
+  connections[playerID] = socket.id;
+
+  socket.on('waiting', function() {
+    console.log(playerID);
+    var id = getGameID(playerID);
+    socket.join(id);
+    notInGame[playerID] = null;
+    io.to(id).emit('newPlayer', games[id], id);
   });
 
-  socket.on('newPlayer', function(first, id) {
-    if (first) {
-      first = false;
-      firstID = socket.id;
-    }
-    games[id].addPlayer(new Player('playerName', socket.id));
-    playerName = "";
-    io.emit('newPlayer', game.players);
-  });
-
-  socket.on('gamestart', function() {
-    if (game.numPlayers < 5) {
+  socket.on('gamestart', function(gameID) {
+    if (games[gameID].numPlayers < 5) {
       return;
     }
+
     gameStarted = true;
-    getFascists(game);
-    io.emit('gamestart', game.players, socket.id, firstID);
-    io.emit("shtime");
+    getFascists(games[gameID]);
+    io.to(id).('gamestart', games[gameID].players, playerID, game.firstID);
   });
 
-  socket.on('newpres', function(first) {
+  socket.on('newpres', function(first, gameID) {
     newPres(first);
-    io.emit('newpres', game.currPres, game.players, first, game);
+    io.emit('newpres', game.currPres, first, game);
   });
 
-  socket.on('chance', function(id) {
-    game.currChance = game.players[id]
-    io.emit('vote', game.players[id], game);
+  socket.on('chance', function(id, gameID) {
+    games[gameID].currChance = games[gameID].players[id]
+    io.to(gameID).emit('vote', games[gameID]);
     return true;
   });
 
-  socket.on('ja', function(id) {
+  socket.on('ja', function(game) {
     game.numJas++;
-    game.jas[socket.id] = true;
+    game.jas[playerID] = true;
     if (game.numJas / game.numCurrPlayers > .5) {
-      jaornein(id);
+      jaornein(game);
     }
   });
 
-  socket.on('nein', function() {
+  socket.on('nein', function(game) {
     game.numNeins++;
-    game.jas[socket.id] = false;
+    game.jas[playerID] = false;
     if (game.numNeins / game.numCurrPlayers > .5) {
-      jaornein(0);
+      jaornein(game);
     }
   });
 
-  socket.on('presCards', function() {
+  socket.on('presCards', function(game) {
     draw = game.draw();
-    socket.emit('presCards', draw);
+    // emit specifically to pres
+    io.to(connections[game.currPres.id]).emit('presCards', game, draw);
   });
 
-  socket.on('presPass', function(card) {
+  socket.on('presPass', function(game, card) {
+    // log cards passed by president
     if (card == true) {
       game.passedCards.push(true);
     } else {
       game.passedCards.push(false);
     }
+    // send cards after 2 are sent
     if (game.passedCards.length == 2) {
-      io.emit('passing', game.currChance.id);
-      io.to(game.currChance.id).emit('chanceCards', game.passedCards);
+      io.to(game.id).emit('passing', game);
+      io.to(connections[game.currChance.id]).emit('chanceCards', game.passedCards, game);
       game.passedCards = [];
     }
   });
 
-  socket.on('cardPlayed', function(card) {
+  socket.on('cardPlayed', function(card, game) {
     var power = game.playCard(card);
     if (!power) {
       io.emit('cardPlayed', card, game, power);
     }
-  });
-
-  socket.on('disconnect', function() {
-    io.emit('gameover', 'none');
-    game = new Game();
-    first = true;
-    gameStarted = false;
   });
 
   socket.on('investigate', function(id) {
@@ -172,19 +177,38 @@ io.on('connection', function(socket) {
     var dead = game.players[id];
     game.numCurrPlayres--;
     delete game.players[id];
-    for (var i in Object.keys(game.players)) {
-      console.log(i);
-    }
+
     io.emit('kill', game, dead);
+  });
+
+  socket.on('disconnect', function() {
+    var id = getGameID(playerID);
+    io.to(games[id]).emit('DC', games[id]);
+    for (var key in Object.keys(games[id].players)) {
+
+    }
+    delete games[id];
+
   });
 
 });
 
-function generateID() {
-  return Math.random().toString(36).substr(2, 9);
+function getGameID(playerID) {
+  var ids = Object.keys(games);
+  for (var i = 0; i < ids.length; i++) {
+    if (games[ids[i]].players[playerID]) {
+      return ids[i];
+    }
+  }
+  return null;
 }
 
-function jaornein(id) {
+
+function generateID() {
+  return Math.random().toString(36).substr(2, 7);
+}
+
+function jaornein(game) {
   if (game.numJas > game.numNeins) {
     game.numJas = 0;
     game.numNeins = 0;
@@ -192,10 +216,10 @@ function jaornein(id) {
     game.prevChance = game.currChance;
     game.currChance = game.players[id];
     if (game.currChance.isHitler && game.numFCards >=3) {
-      io.emit('end', game, 2);
+      io.to(game.id).emit('end', game, 2);
       return;
     }
-    io.emit('voteTally', game.jas, game.currPres, game.players, true);
+    io.to(game.id).emit('voteTally', game, true);
     game.jas = {};
   } else {
     game.numJas = 0;
@@ -243,7 +267,7 @@ function getFascists() {
   }
 }
 
-function newPres(first) {
+function newPres(first, id) {
   var chance = null;
   var playersOnly = Object.values(game.players);
   game.prevPres = game.currPres;
@@ -297,6 +321,7 @@ class Player {
 class Game {
   constructor() {
     console.log('initializing game');
+    this.ID;
     this.players = {};
     this.currPres;
     this.currChance;
@@ -304,13 +329,13 @@ class Game {
     this.prevChance;
     this.vicLib;
     this.vicFasc;
+    this.firstID;
     this.anarchy = 0;
     this.discards = [];
     this.numFCards = 0;
     this.numLCards = 0;
     this.cards = this.createDeck();
     this.shuffle();
-    console.log(this.cards);
     this.index = 0;
     this.numPlayers = 0;
     this.passedCards = [];
@@ -320,10 +345,11 @@ class Game {
     this.numNeins = 0;
   }
 
-  addPlayer(player) {
+  addPlayer(name, id) {
+    var toAdd = new Player(name, id);
     this.numPlayers++;
     this.numCurrPlayers++;
-    this.players[player.id] = player;
+    this.players[toAdd.id] = toAdd;
   }
 
   createDeck() {
@@ -347,37 +373,37 @@ class Game {
       return this.getPower();
     }
     if (this.numLCard == 5) {
-      io.emit('end', 0);
+      io.to(this.id).emit('end', 0);
     }
     if (this.numFCards == 6) {
-      io.emit('end', 1);
+      io.to(this.id).emit('end', 1);
     }
   }
 
   getPower(card) {
     if (this.numFCards == 4 || this.numFCards == 5) {
-      io.emit('bullet', this);
+      io.to(this.id).emit('bullet', this);
       return true;
     }
     if (this.numPlayers == 5 || this.numPlayers == 6) {
       if (this.numFCards == 3) {
-        io.emit('invetigation', this);
+        io.to(this.id).emit('invetigation', this);
         return true;
       }
     } else if (this.numPlayers == 7 || this.numPlayers == 8) {
       if (this.numFCards == 2) {
-        io.emit('investigation', this);
+        io.to(this.id).emit('investigation', this);
         return true;
       } else if (this.numFCards == 3) {
-        io.emit('election', this);
+        io.to(this.id).emit('election', this);
         return true;
       }
     } else if (this.numPlayers == 9 || this.numPlayers == 10) {
       if (this.numFCards == 1 || this.numFCards == 2) {
-        io.emit('investigation', this);
+        io.to(this.id).emit('investigation', this);
         return true;
       } else if (this.numFCards == 3) {
-        io.emit('specialElection', this);
+        io.to(this.id).emit('specialElection', this);
         return true;
       }
       return false;
@@ -420,7 +446,6 @@ class Game {
         toPlayer.push(this.cards[this.index]);
       }
     }
-    console.log(toPlayer);
     return toPlayer;
   }
 
