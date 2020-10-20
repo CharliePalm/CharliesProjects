@@ -1,0 +1,76 @@
+
+body {
+
+  background: #212121;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 13pt;
+}
+
+.container {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  display: grid | inline-grid;
+  display: grid;
+  grid-template-columns: [column1-start] 33% [column1-end column2-start] 33% [column2-end column3-start] 33% [column3-end];
+  grid-template-rows: [row1-start] 33% [row1-end row2-start] 33% [row2-end row3-start] 33% [row3-end];
+}
+
+#front {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+
+#gameID, #idCode {
+
+  grid-column: 3;
+  grid-row: 1;
+}
+
+#whoAmI {
+
+  grid-column: 3;
+  grid-row: 3;
+}
+
+#canvas {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  margin: auto;
+}
+
+
+#f, #l {
+  grid-row: <row3-end>;
+  grid-column: <column3-end>;
+}
+
+#everyone {
+  grid-row: <row2-start>;
+  grid-column: <column2-start>;
+}
+
+.choices {
+  grid-row: <row2-start>;
+  grid-column: <column2-start>;
+}
+
+#submit {
+    grid-row: <row2-start>;
+    grid-column: <column1-start>;
+}
+
+button, #submit {
+    font-size: 10pt;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    font-style: italic;
+    background-color: #212121;
+    border: 1px solid;
+}
+
+button:hover {
+  color: grey;
+}
