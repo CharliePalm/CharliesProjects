@@ -1,56 +1,73 @@
 <!DOCTYPE html>
 <script src='/socket.io/socket.io.js'></script>
+<script src='/socket.io/socket.io.js'></script>
 <script>
   const socket = io.connect();
-  const playerID = socket.request.session.id;
+  let playerID;
+  // back and forth between the server upon connection to log client's id
+  socket.on('playerID', function(id) {
+    playerID = id
+    console.log(playerID);
+  });
+  // let the server know there's someone in the waiting room
   socket.emit('waiting');
 </script>
-<link rel="stylesheet" type='text/css'z href="style/style.css"/>
+<link rel='stylesheet' href="style/style.css"/>
 
 <body>
-<h id='id'>Your game ID is:
-<p1 id=idCode></p1>
-</h>
-<h1 id='top'>Waiting for players!</h1>
-  <p1 id='sub'>Currently we have:</p1>
-  <p2 id='nameLabel'></p2>
-  <p3 id="names"></p3>
-  <p4><br>
-    <button id ='everyone' onClick="gameStart()">Everyone&apos;s in</button>
-  </p4>
+  <div class='container'>
 
-<h2>You are:</h2>
-  <p3 id='id'></p3>
+    <h id='gameID'>Your game ID is:
+      <p1 id=idCode></p1>
+    </h>
+    <div id='front'>
+      <h1 id='top'>waiting for players</h1>
+      <p1 id='sub'>currently we have:</p1>
+    </div>
+      <p2 id='nameLabel'></p2>
+      <p3 id="names"></p3>
+      <p4><br>
+        <button id ='everyone' onClick="gameStart()">everyone&apos;s in</button>
+      </p4>
 
-<div1 id='second'>
-  <p id='postChoice'></p>
-</div1>
+    <h2 id="whoAmI">You are:
+      <p3 id='id'></p3>
+    </h2>
+    <div1 class='choices'>
+      <div1 id='second'>
+        <p id='postChoice'></p>
+      </div1>
 
-<p id='vote'></p>
+      <p id='vote'></p>
 
-<div2 id='pres'>
-  <p id='cpick'></p>
-</div2>
+      <div2 id='pres'>
+        <p id='cpick'></p>
+      </div2>
 
-<div3 id='parentOfChoice'>
-  <p id='choice'></p>
-</div3>
+      <div3 id='parentOfChoice'>
+        <p id='choice'></p>
+      </div3>
 
-<h5 id='cards'></h5>
-  <p1 id='card1'></p1>
-  <p1 id='card2'></p1>
-  <p1 id='card3'></p1>
+      <h5 id='cards'></h5>
+        <p1 id='card1'></p1>
+        <p1 id='card2'></p1>
+        <p1 id='card3'></p1>
 
-<h6 id='fascists'>
-  <p1 id='f'></p1>
-</h6>
+      <h6 id='fascists'>
+        <p1 id='f'></p1>
+      </h6>
 
-<h7 id='liberals'>
-  <p1 id='l'></p1>
-</h7>
+      <h7 id='liberals'>
+        <p1 id='l'></p1>
+      </h7>
 
-<h8 id='powerAction'></h7>
-</body>
+      <h8 id='powerAction'></h7>
+    </div1>
+  </div>
+ </body>
+
+
+
 <script>
 
 
@@ -58,9 +75,11 @@
 socket.on('newPlayer', function(game, id) {
   var out = "<br>";
   for (var key in game.players) {
-    out += game.players[key].name + '<br>';
+    if (key != playerID) {
+      out += game.players[key].name + '<br>';
+    }
   }
-
+  document.getElementById('id').innerHTML = game.players[playerID].name;
   document.getElementById('names').innerHTML = out;
   document.getElementById('idCode').innerHTML = id;
 
@@ -78,8 +97,8 @@ socket.on('newPlayer', function(game, id) {
       break;
     }
     document.getElement
-    document.getElementById('top').innerHTML = "Your super secret role is:";
-    document.getElementById('nameLabel').innerHTML = '<br><br>Current game.players:';
+    document.getElementById('top').innerHTML = "Your super secret role is:\n";
+    document.getElementById('nameLabel').innerHTML = '<br><br>current players:';
 
     if (game.players[playerID].isHitler) {
       // when there's only 5 or 6 game.players hitler know his fascists
@@ -91,7 +110,7 @@ socket.on('newPlayer', function(game, id) {
               break;
             }
           }
-        document.getElementById('sub').innerHTML = "HITLER. Your other fascist is " + otherFasc;
+        document.getElementById('sub').innerHTML += "HITLER. Your other fascist is " + otherFasc;
       } else {
         document.getElementById('sub').innerHTML = "HITLER";
       }
@@ -105,7 +124,7 @@ socket.on('newPlayer', function(game, id) {
         if (game.players[key].isFascist) {
           if (game.players[key].isHitler) {
             hitler = game.players[key].name;
-          } else {
+          } else if (playerID != key) {
             moreFasc = true;
             otherFascists += game.players[key].name + " and ";
           }
@@ -119,60 +138,58 @@ socket.on('newPlayer', function(game, id) {
     } else {
       document.getElementById('sub').innerHTML = "LIBERAL";
     }
-    // adds lines between names and role
-    document.getElementById('names').innerHTML = "<br><br><br>"
 
     for (var key in game.players) {
       if (key == playerID) {
         continue;
       } else {
-        document.getElementById('names').innerHTML += players[key].name + "<br><br>";
+        document.getElementById('names').innerHTML += game.players[key].name + "<br><br>";
       }
     }
-    if (firstID == playerID) {
-      socket.emit('newpres', true, game.ID);
-      bool = false;
+    if (playerID == game.firstID) {
+      socket.emit('newpres', true, game);
     }
-    bool = false;
   });
 
-  socket.on('newpres', function(game, pres, first) {
+  socket.on('newpres', function(game, first) {
     destroyChoice();
     destroyPostChoice();
     destroyCards();
-    if (playerID == pres.id) {
+
+    if (playerID == game.currPres.id) {
+      console.log('inPres');
       if (first) {
-        document.getElementById('pres').innerHTML = "You have been selected to be the first President!";
+        document.getElementById('pres').innerHTML = "You have been selected to be the first president";
       } else {
-        document.getElementById('pres').innerHTML = "You are the new President!<br>";
+        document.getElementById('pres').innerHTML = "You are the new president<br>";
       }
       document.getElementById('choice').innerHTML = 'Pick your chanecellor:<br>';
-      for (key in game.players) {
-        let i = key;
+
+      var ids = Object.keys(game.players);
+      // create buttons to pick chancellor:
+      ids.forEach(function(key) {
         const id = key;
-        if (key == playerID) {
-          continue;
-        } else {
+        if (key != playerID) {
           var x = document.createElement("BUTTON");
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
             chancellor(id, game);
-          })
+          });
           var element = document.getElementById('choice');
           element.append(x);
         }
-      }
+      });
     } else {
       if (first) {
-      document.getElementById('pres').innerHTML = "The first President is " + pres.name + ". They are currently deciding on their Chancellor.";
+      document.getElementById('pres').innerHTML = "The first president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
     } else {
-      document.getElementById('pres').innerHTML = "The new President is " + pres.name + ". They are currently deciding on their Chancellor.";
+      document.getElementById('pres').innerHTML = "The new president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
     }
     }
   });
 
-  socket.on('vote', function( game) {
+  socket.on('vote', function(game) {
     destroyI();
     destroyPostChoice();
     if (!(playerID in game.players)) {
@@ -180,14 +197,15 @@ socket.on('newPlayer', function(game, id) {
     }
     document.getElementById('pres').innerHTML = game.currPres.name + ' has chosen ' + game.currChance.name + ' to be Chancellor. ja or nein?<br>';
     document.getElementById('pres').innerHTML += "Remember: this vote is final!";
+
     var x = document.createElement("BUTTON");
     var t = document.createTextNode("nein!");
     x.append(t);
     x.addEventListener('click', function() {
       destroyChoice();
-      document.getElementById('choice').innerHTML = 'you voted nein!';
+      document.getElementById('choice').innerHTML = 'your vote has been cast...';
       socket.emit('nein', game);
-    })
+    });
     var element = document.getElementById('choice');
     element.append(x);
 
@@ -196,7 +214,7 @@ socket.on('newPlayer', function(game, id) {
     x.append(t);
     x.addEventListener('click', function() {
       destroyChoice();
-      document.getElementById('choice').innerHTML = 'you voted ja!';
+      document.getElementById('choice').innerHTML = 'your vote has been cast...';
       socket.emit('ja', game);
     })
 
@@ -464,7 +482,7 @@ socket.on('newPlayer', function(game, id) {
     if (game.currChance != null && (id == game.currChance.id || id == game.prevPres.id)) {
       return;
     }
-    socket.emit("chance", id, game.id)
+    socket.emit("chance", id, game)
     destroyChoice();
   }
 

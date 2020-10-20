@@ -21,10 +21,14 @@ const sessionMiddleware = session({ secret: 'BungaloBill', cookie: { maxAge: 600
 app.use(sessionMiddleware);
 app.set('port', 5000);
 //app.use('/static', express.static(__dirname + '/static'));
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname));
 // Routing on entry
 app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname, 'prePlayView.html'));
+});
+
+app.get('/style.css', function(req, res) {
+  res.sendFile(__dirname + "/" + "style.css");
 });
 
 // called when a player enters the game
@@ -36,7 +40,6 @@ app.post("/userView.html", function(req, res) {
   // parses user's input into id and name
   req.on('end', function () {
     var asdh = getGameID(req.session.id)
-    console.log('req says ' + req.session.id)
     var playerName = body.substr(body.indexOf("=") + 1, body.indexOf("&") - 5);
     var id = body.substr(body.indexOf("&") + 4, body.length);
     body = "";
@@ -52,7 +55,7 @@ app.post("/userView.html", function(req, res) {
 
       games[id].addPlayer(playerName, req.session.id);
       games[id].firstID = req.session.id;
-      game.id = id;
+      games[id].id = id;
 
     } else { // join game with user inputted id
       if (games[id] == null || games[id].players.length == 10) {
@@ -70,13 +73,11 @@ app.post("/userView.html", function(req, res) {
 // starts the game after button push
 app.post('/gameview.html', function(req, res) {
   if (Object.keys(game.players).length < 5) {
-    console.log('less than 5');
     res.sendFile(path.join(__dirname, '/index.html'));
     return;
   }
   gameStarted = true;
   res.sendFile(path.join(__dirname, '/index.html'));
-  //console.log(res.sendFile(path.join(__dirname, '/index.html')));
 });
 
 // io inputs: collections of user interaction with server
@@ -84,12 +85,10 @@ io.on('connect', function(socket) {
 
   var playerID = socket.request.session.id;
   playerID.connections++;
-
-  console.log('socket says ' + playerID)
   connections[playerID] = socket.id;
+  io.to(socket.id).emit('playerID', playerID);
 
   socket.on('waiting', function() {
-    console.log(playerID);
     var id = getGameID(playerID);
     socket.join(id);
     notInGame[playerID] = null;
@@ -100,36 +99,36 @@ io.on('connect', function(socket) {
     if (games[gameID].numPlayers < 5) {
       return;
     }
-
-    gameStarted = true;
     getFascists(games[gameID]);
-    io.to(id).('gamestart', games[gameID].players, playerID, game.firstID);
+    io.to(gameID).emit('gamestart', games[gameID], games[gameID].firstID);
   });
 
-  socket.on('newpres', function(first, gameID) {
-    newPres(first);
-    io.emit('newpres', game.currPres, first, game);
+  socket.on('newpres', function(first, game) {
+    newPres(first, game);
+    io.to(game.id).emit('newpres', game, first);
   });
 
-  socket.on('chance', function(id, gameID) {
-    games[gameID].currChance = games[gameID].players[id]
-    io.to(gameID).emit('vote', games[gameID]);
+  socket.on('chance', function(id, game) {
+    game.prospectChance = game.players[id]
+    io.to(game.id).emit('vote', game);
     return true;
   });
 
   socket.on('ja', function(game) {
-    game.numJas++;
-    game.jas[playerID] = true;
-    if (game.numJas / game.numCurrPlayers > .5) {
-      jaornein(game);
+    games[game.id].numJas++;
+    games[game.id].jas[playerID] = true;
+    console.log("jas is : " + games[game.id].numJas);
+    if (games[game.id].numJas / games[game.id].numCurrPlayers > .5) {
+      console.log('test');
+      jaornein(games[game.id]);
     }
   });
 
   socket.on('nein', function(game) {
-    game.numNeins++;
-    game.jas[playerID] = false;
-    if (game.numNeins / game.numCurrPlayers > .5) {
-      jaornein(game);
+    games[game.id].numNeins++;
+    games[game.id].jas[playerID] = false;
+    if (games[game.id].numNeins / games[game.id].numCurrPlayers > .5) {
+      jaornein(games[game.id]);
     }
   });
 
@@ -183,11 +182,14 @@ io.on('connect', function(socket) {
 
   socket.on('disconnect', function() {
     var id = getGameID(playerID);
+    if (id == null) return;
+    if (games[id] == null) return;
+
     io.to(games[id]).emit('DC', games[id]);
     for (var key in Object.keys(games[id].players)) {
 
     }
-    delete games[id];
+    if(games[id]) delete games[id];
 
   });
 
@@ -209,12 +211,14 @@ function generateID() {
 }
 
 function jaornein(game) {
+  console.log('test');
   if (game.numJas > game.numNeins) {
     game.numJas = 0;
     game.numNeins = 0;
     game.anarchy = 0;
     game.prevChance = game.currChance;
-    game.currChance = game.players[id];
+    game.currChance = game.prospectChance;
+    game.prospectChance = null;
     if (game.currChance.isHitler && game.numFCards >=3) {
       io.to(game.id).emit('end', game, 2);
       return;
@@ -232,13 +236,13 @@ function jaornein(game) {
       io.emit('anarchy', card);
     }
     io.emit('voteTally', game.jas, game.currPres, game.players, false);
-    newPres(false);
+    newPres(false, game);
     io.emit('newpres', game.currPres, game.players, false, game);
   }
 }
 
 
-function getFascists() {
+function getFascists(game) {
   var numFascists = 0;
   if (game.numPlayers == 5 || game.numPlayers == 6) {
     numFascists = 1
@@ -267,7 +271,7 @@ function getFascists() {
   }
 }
 
-function newPres(first, id) {
+function newPres(first, game) {
   var chance = null;
   var playersOnly = Object.values(game.players);
   game.prevPres = game.currPres;
@@ -343,6 +347,7 @@ class Game {
     this.jas = {};
     this.numJas = 0;
     this.numNeins = 0;
+    this.prospectChance;
   }
 
   addPlayer(name, id) {
