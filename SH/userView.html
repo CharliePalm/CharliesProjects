@@ -7,7 +7,6 @@
   // back and forth between the server upon connection to log client's id
   socket.on('playerID', function(id) {
     playerID = id
-    console.log(playerID);
   });
   // let the server know there's someone in the waiting room
   socket.emit('waiting');
@@ -22,17 +21,15 @@
     </h>
     <div id='front'>
       <h1 id='top'>waiting for players</h1>
-      <p1 id='sub'>currently we have:</p1>
+      <p1 id='sub'></p1>
     </div>
-      <p2 id='nameLabel'></p2>
-      <p3 id="names"></p3>
+      <div class='nameDiv'>
+        <p2 id='nameLabel'>currently we have:<br></p2>
+        <p3 id="names"></p3>
+      </div>
       <p4><br>
         <button id ='everyone' onClick="gameStart()">everyone&apos;s in</button>
       </p4>
-
-    <h2 id="whoAmI">You are:
-      <p3 id='id'></p3>
-    </h2>
     <div1 class='choices'>
       <div1 id='second'>
         <p id='postChoice'></p>
@@ -48,21 +45,27 @@
         <p id='choice'></p>
       </div3>
 
+      <div id='cardContainer'>
       <h5 id='cards'></h5>
         <p1 id='card1'></p1>
         <p1 id='card2'></p1>
         <p1 id='card3'></p1>
+      </div>
+      <h8 id='powerAction'></h7>
+    </div1>
+
+
+    <div2 id='score'>
 
       <h6 id='fascists'>
         <p1 id='f'></p1>
       </h6>
 
-      <h7 id='liberals'>
+      <h7 class='score'>
         <p1 id='l'></p1>
       </h7>
 
-      <h8 id='powerAction'></h7>
-    </div1>
+    </div2>
   </div>
  </body>
 
@@ -73,13 +76,10 @@
 
 // adds a player to the screen
 socket.on('newPlayer', function(game, id) {
-  var out = "<br>";
+  var out = "";
   for (var key in game.players) {
-    if (key != playerID) {
       out += game.players[key].name + '<br>';
-    }
   }
-  document.getElementById('id').innerHTML = game.players[playerID].name;
   document.getElementById('names').innerHTML = out;
   document.getElementById('idCode').innerHTML = id;
 
@@ -98,7 +98,7 @@ socket.on('newPlayer', function(game, id) {
     }
     document.getElement
     document.getElementById('top').innerHTML = "Your super secret role is:\n";
-    document.getElementById('nameLabel').innerHTML = '<br><br>current players:';
+    document.getElementById('nameLabel').innerHTML = 'current players:';
 
     if (game.players[playerID].isHitler) {
       // when there's only 5 or 6 game.players hitler know his fascists
@@ -138,14 +138,6 @@ socket.on('newPlayer', function(game, id) {
     } else {
       document.getElementById('sub').innerHTML = "LIBERAL";
     }
-
-    for (var key in game.players) {
-      if (key == playerID) {
-        continue;
-      } else {
-        document.getElementById('names').innerHTML += game.players[key].name + "<br><br>";
-      }
-    }
     if (playerID == game.firstID) {
       socket.emit('newpres', true, game);
     }
@@ -157,7 +149,6 @@ socket.on('newPlayer', function(game, id) {
     destroyCards();
 
     if (playerID == game.currPres.id) {
-      console.log('inPres');
       if (first) {
         document.getElementById('pres').innerHTML = "You have been selected to be the first president";
       } else {
@@ -169,16 +160,17 @@ socket.on('newPlayer', function(game, id) {
       // create buttons to pick chancellor:
       ids.forEach(function(key) {
         const id = key;
-        if (key != playerID) {
-          var x = document.createElement("BUTTON");
-          var t = document.createTextNode(game.players[key].name);
-          x.append(t);
-          x.addEventListener('click', function() {
-            chancellor(id, game);
-          });
-          var element = document.getElementById('choice');
-          element.append(x);
-        }
+        if (first) {
+          if (key != playerID && key != game.prevChance && key != game.prevPres.id) {
+            var x = document.createElement("BUTTON");
+            var t = document.createTextNode(game.players[key].name);
+            x.append(t);
+            x.addEventListener('click', function() {
+              chancellor(id, game);
+            });
+            var element = document.getElementById('choice');
+            element.append(x);
+          }
       });
     } else {
       if (first) {
@@ -195,7 +187,7 @@ socket.on('newPlayer', function(game, id) {
     if (!(playerID in game.players)) {
       return;
     }
-    document.getElementById('pres').innerHTML = game.currPres.name + ' has chosen ' + game.currChance.name + ' to be Chancellor. ja or nein?<br>';
+    document.getElementById('pres').innerHTML = game.currPres.name + ' has chosen ' + game.prospectChance.name + ' to be Chancellor. ja or nein?<br>';
     document.getElementById('pres').innerHTML += "Remember: this vote is final!";
 
     var x = document.createElement("BUTTON");
@@ -286,10 +278,10 @@ socket.on('newPlayer', function(game, id) {
       i++;
     }
     if (pass) {
-      document.getElementById('postChoice').innerHTML = 'VOTE PASSED!<br>Sending cards to ' + pres.name + '<br><br>';
+      document.getElementById('postChoice').innerHTML = 'VOTE PASSED!<br>Sending cards to ' + game.currPres.name + '<br><br>';
       destroyChoice();
       destroyPres();
-      if (playerID == pres.id) {
+      if (playerID == game.currPres.id) {
         socket.emit('presCards', game);
       }
     } else {
@@ -299,33 +291,27 @@ socket.on('newPlayer', function(game, id) {
   });
 
   socket.on('presCards', function(game, cards) {
-    console.log(cards);
     for (var i = 1; i < cards.length + 1; i++) {
       var x = document.createElement("BUTTON");
-      console.log(cards[i-1]);
       const cardButton = cards[i - 1];
       const htIndex = i;
       if (!cards[i - 1]) {
-        console.log('fasc');
-        var t = document.createElement("FASCIST");
-        t.src = '/fascist.png';
+        var t = document.createElement("Button");
+        t.setAttribute('id', "FASCIST")
         x.addEventListener('click', function() {
           destroySingleCard(htIndex);
-          document.getElementById('card' + htIndex).innerHTML = 'Fascist sent';
-          socket.emit('presPass', game, cardButton);
+          socket.emit('presPass', game, false);
         });
       } else {
-        var t = document.createElement("LIBERAL");
-        t.src = '/liberal.png';
+        var t = document.createElement("Button");
+        t.setAttribute('id', "LIBERAL");
         x.addEventListener('click', function() {
           destroySingleCard(htIndex);
-          document.getElementById('card' + htIndex).innerHTML = 'Liberal sent';
-          socket.emit('presPass', game, cardButton);
+          socket.emit('presPass', game, true);
         });
       }
       x.append(t);
       var element = document.getElementById('card' + i);
-      console.log("card" + i);
       element.append(x);
     }
   });
@@ -341,26 +327,28 @@ socket.on('newPlayer', function(game, id) {
   });
 
   socket.on('chanceCards', function(cards, game) {
+    console.log(cards);
     for (var i = 1; i < cards.length + 1; i++) {
       var x = document.createElement("BUTTON");
       const cardButton = cards[i-1];
-      console.log(cards[i]);
       if (!cards[i - 1]) {
         const htIndex = i;
-        var t = document.createTextNode("FASCIST");
+        var t = document.createElement("Button");
+        // set id to fascist to get image from css file
+        t.setAttribute('id', 'FASCIST');
         x.addEventListener('click', function() {
-          document.getElementById('card' + htIndex).innerHTML = 'Fascist played';
-          if (socket.emit('cardPlayed', game, cardButton)) {
+          console.log('fasc clicked');
+          if (socket.emit('cardPlayed', game, false)) {
             destroyCards();
           }
         });
       } else {
         const htIndex = i;
-        var t = document.createTextNode("LIBERAL");
+        var t = document.createElement("Button");
+        // set id to Liberal to get image from css file
+        t.setAttribute('id', 'LIBERAL');
         x.addEventListener('click', function() {
-          document.getElementById('card' + htIndex).innerHTML = 'Liberal played';
-          console.log(cardButton);
-          if (socket.emit('cardPlayed', game, cardButton)) {
+          if (socket.emit('cardPlayed', game, true)) {
             destroyCards();
           }
         });
@@ -372,7 +360,7 @@ socket.on('newPlayer', function(game, id) {
   });
 
   socket.on('cardPlayed', function(card, game, power) {
-    destroyCards();
+    destroyAll();
     document.getElementById('cards').innerHTML = game.currPres.name + " and " + game.currChance.name + " played a ";
     if (card) {
       document.getElementById('cards').innerHTML += 'Liberal card!';
@@ -381,8 +369,8 @@ socket.on('newPlayer', function(game, id) {
       document.getElementById('cards').innerHTML += 'Fascist card!';
       document.getElementById('f').innerHTML += ' F';
     }
-    if (playerID == game.currPres.id && !power) {
-      socket.emit('newpres', false);
+    if (playerID == game.currPres.id) {
+      socket.emit('newpres', false, game);
     }
   });
 
@@ -404,7 +392,6 @@ socket.on('newPlayer', function(game, id) {
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
-            console.log(id);
             investigate(id, game);
           })
           var element = document.getElementById('powerAction');
@@ -431,7 +418,6 @@ socket.on('newPlayer', function(game, id) {
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
-            console.log(id);
             elect(id, game);
           })
           var element = document.getElementById('choice');
@@ -460,7 +446,6 @@ socket.on('newPlayer', function(game, id) {
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
-            console.log(id);
             bullet(id);
           })
           var element = document.getElementById('choice');
@@ -479,7 +464,7 @@ socket.on('newPlayer', function(game, id) {
   }
 
   function chancellor(id, game) {
-    if (game.currChance != null && (id == game.currChance.id || id == game.prevPres.id)) {
+    if (game.prospectChance != null && (id == game.prospectChance.id || id == game.prevPres.id)) {
       return;
     }
     socket.emit("chance", id, game)
@@ -495,11 +480,11 @@ socket.on('newPlayer', function(game, id) {
     }
     // create continue button
     var x = document.createElement("BUTTON");
-    var t = document.createTextNode("Click here when you're ready to continue");
+    var t = document.createTextNode("continue");
     x.append(t);
     x.addEventListener('click', function() {
       destroyPowerAction();
-      socket.emit('newpres', false);
+      socket.emit('newpres', false, game);
     })
     var element = document.getElementById('powerAction');
     element.append(x);
@@ -572,13 +557,10 @@ socket.on('newPlayer', function(game, id) {
       const index = i;
       var node = document.getElementById('card' + index);
       var parent = node.parentNode;
-      console.log(parent);
       parent.removeChild(node);
       var newNode = document.createElement('p');
       newNode.setAttribute('id', 'card' + index);
-      console.log(newNode);
       parent.appendChild(newNode);
-      console.log(document.getElementById('card'+i));
     }
   }
 

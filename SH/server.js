@@ -104,22 +104,21 @@ io.on('connect', function(socket) {
   });
 
   socket.on('newpres', function(first, game) {
-    newPres(first, game);
-    io.to(game.id).emit('newpres', game, first);
+    newPres(first, games[game.id]);
+    io.to(game.id).emit('newpres', games[game.id], first);
   });
 
   socket.on('chance', function(id, game) {
-    game.prospectChance = game.players[id]
-    io.to(game.id).emit('vote', game);
+    games[game.id].prospectChance = games[game.id].players[id]
+    console.log(games[game.id].prospectChance)
+    io.to(game.id).emit('vote', games[game.id]);
     return true;
   });
 
   socket.on('ja', function(game) {
     games[game.id].numJas++;
     games[game.id].jas[playerID] = true;
-    console.log("jas is : " + games[game.id].numJas);
     if (games[game.id].numJas / games[game.id].numCurrPlayers > .5) {
-      console.log('test');
       jaornein(games[game.id]);
     }
   });
@@ -133,38 +132,45 @@ io.on('connect', function(socket) {
   });
 
   socket.on('presCards', function(game) {
-    draw = game.draw();
+    draw = games[game.id].draw();
     // emit specifically to pres
-    io.to(connections[game.currPres.id]).emit('presCards', game, draw);
+    io.to(connections[games[game.id].currPres.id]).emit('presCards', games[game.id], draw);
   });
 
   socket.on('presPass', function(game, card) {
-    // log cards passed by president
+    // log cards passt.setAttribute('id', "LIBERAL")ed by president
     if (card == true) {
-      game.passedCards.push(true);
+      console.log('Liberal passed');
+      games[game.id].passedCards.push(true);
     } else {
-      game.passedCards.push(false);
+      console.log('fascist passed');
+      games[game.id].passedCards.push(false);
     }
     // send cards after 2 are sent
-    if (game.passedCards.length == 2) {
-      io.to(game.id).emit('passing', game);
-      io.to(connections[game.currChance.id]).emit('chanceCards', game.passedCards, game);
-      game.passedCards = [];
+    console.log(games[game.id].passedCards.length);
+    if (games[game.id].passedCards.length == 2) {
+      io.to(game.id).emit('passing', games[game.id]);
+      io.to(connections[game.currChance.id]).emit('chanceCards', games[game.id].passedCards, games[game.id]);
+      games[game.id].passedCards = [];
     }
   });
 
-  socket.on('cardPlayed', function(card, game) {
-    var power = game.playCard(card);
+  socket.on('cardPlayed', function(game, card) {
+    var id = game.id
+    console.log('card has been played: ' + card);
+    var power = games[id].playCard(card);
+    console.log(power);
     if (!power) {
-      io.emit('cardPlayed', card, game, power);
+      io.to(id).emit('cardPlayed', card, games[id], power);
     }
   });
 
-  socket.on('investigate', function(id) {
+  socket.on('investigate', function(game, id) {
+
     io.to(socket.id).emit('receivedInvestigation', game, id, game.players[id].isFascist);
   });
 
-  socket.on('election', function(id) {
+  socket.on('election', function(id, gameID) {
     game.currPres = game.players[id];
     io.emit('newpres', game.currPres, game.players, false, game);
   });
@@ -211,7 +217,6 @@ function generateID() {
 }
 
 function jaornein(game) {
-  console.log('test');
   if (game.numJas > game.numNeins) {
     game.numJas = 0;
     game.numNeins = 0;
@@ -392,7 +397,7 @@ class Game {
     }
     if (this.numPlayers == 5 || this.numPlayers == 6) {
       if (this.numFCards == 3) {
-        io.to(this.id).emit('invetigation', this);
+        io.to(this.id).emit('investigation', this);
         return true;
       }
     } else if (this.numPlayers == 7 || this.numPlayers == 8) {
@@ -411,8 +416,8 @@ class Game {
         io.to(this.id).emit('specialElection', this);
         return true;
       }
-      return false;
     }
+    return false;
   }
 
   draw() {
