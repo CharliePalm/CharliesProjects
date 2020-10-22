@@ -161,7 +161,7 @@ socket.on('newPlayer', function(game, id) {
       ids.forEach(function(key) {
         const id = key;
         if (first) {
-          if (key != playerID && key != game.prevChance && key != game.prevPres.id) {
+          if (key != playerID) {
             var x = document.createElement("BUTTON");
             var t = document.createTextNode(game.players[key].name);
             x.append(t);
@@ -170,16 +170,26 @@ socket.on('newPlayer', function(game, id) {
             });
             var element = document.getElementById('choice');
             element.append(x);
-          } else {
-
           }
-      });
-    } else {
+      } else {
+        if (key != playerID && key != game.prevChance.id && key != game.prevPres.id) {
+          var x = document.createElement("BUTTON");
+          var t = document.createTextNode(game.players[key].name);
+          x.append(t);
+          x.addEventListener('click', function() {
+            chancellor(id, game);
+          });
+          var element = document.getElementById('choice');
+          element.append(x);
+        }
+      }
+    });
+  } else {
       if (first) {
-      document.getElementById('pres').innerHTML = "The first president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
-    } else {
-      document.getElementById('pres').innerHTML = "The new president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
-    }
+        document.getElementById('pres').innerHTML = "The first president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
+      } else {
+        document.getElementById('pres').innerHTML = "The new president is " + game.currPres.name + ". They are currently deciding on their Chancellor.";
+      }
     }
   });
 
@@ -421,7 +431,7 @@ socket.on('newPlayer', function(game, id) {
           x.append(t);
           x.addEventListener('click', function() {
             elect(id, game);
-          })
+          });
           var element = document.getElementById('choice');
           element.append(x);
         }
@@ -448,7 +458,7 @@ socket.on('newPlayer', function(game, id) {
           var t = document.createTextNode(game.players[key].name);
           x.append(t);
           x.addEventListener('click', function() {
-            bullet(id);
+            bullet(id, game);
           })
           var element = document.getElementById('choice');
           element.append(x);
@@ -457,12 +467,12 @@ socket.on('newPlayer', function(game, id) {
     }
   });
 
-  function bullet(id) {
-    socket.emit('bullet', id);
+  function bullet(id, game) {
+    socket.emit('bullet', id, game);
   }
 
-  function elect(id) {
-    socket.emit('election', id);
+  function elect(id, game) {
+    socket.emit('election', game);
   }
 
   function chancellor(id, game) {

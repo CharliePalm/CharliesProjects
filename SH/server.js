@@ -9,9 +9,8 @@ const session = require('express-session');
 const app = express();
 const server = http.Server(app);
 const io = socketIO(server);
-var connections = [];
+var connections = {};
 var games = {};
-var notInGame = {};
 
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
@@ -70,31 +69,21 @@ app.post("/userView.html", function(req, res) {
 
 });
 
-// starts the game after button push
-app.post('/gameview.html', function(req, res) {
-  if (Object.keys(game.players).length < 5) {
-    res.sendFile(path.join(__dirname, '/index.html'));
-    return;
-  }
-  gameStarted = true;
-  res.sendFile(path.join(__dirname, '/index.html'));
-});
-
 // io inputs: collections of user interaction with server
 io.on('connect', function(socket) {
 
   var playerID = socket.request.session.id;
-  playerID.connections++;
   connections[playerID] = socket.id;
   io.to(socket.id).emit('playerID', playerID);
 
   socket.on('waiting', function() {
     var id = getGameID(playerID);
     socket.join(id);
-    notInGame[playerID] = null;
+    console.log(games[id].players);
     io.to(id).emit('newPlayer', games[id], id);
   });
 
+  // starts the game after button push
   socket.on('gamestart', function(gameID) {
     if (games[gameID].numPlayers < 5) {
       return;
@@ -103,11 +92,14 @@ io.on('connect', function(socket) {
     io.to(gameID).emit('gamestart', games[gameID], games[gameID].firstID);
   });
 
+  // called when a game needs a new president
   socket.on('newpres', function(first, game) {
     newPres(first, games[game.id]);
     io.to(game.id).emit('newpres', games[game.id], first);
   });
 
+
+  // called when the president selects their chancellor
   socket.on('chance', function(id, game) {
     games[game.id].prospectChance = games[game.id].players[id]
     console.log(games[game.id].prospectChance)
@@ -115,6 +107,8 @@ io.on('connect', function(socket) {
     return true;
   });
 
+
+  // called when a player votes ja
   socket.on('ja', function(game) {
     games[game.id].numJas++;
     games[game.id].jas[playerID] = true;
@@ -123,6 +117,8 @@ io.on('connect', function(socket) {
     }
   });
 
+
+  // called when a player votes nein
   socket.on('nein', function(game) {
     games[game.id].numNeins++;
     games[game.id].jas[playerID] = false;
@@ -131,12 +127,15 @@ io.on('connect', function(socket) {
     }
   });
 
+
+  // called when the president needs cards
   socket.on('presCards', function(game) {
     draw = games[game.id].draw();
     // emit specifically to pres
     io.to(connections[games[game.id].currPres.id]).emit('presCards', games[game.id], draw);
   });
 
+  // called after president picks their cards
   socket.on('presPass', function(game, card) {
     // log cards passt.setAttribute('id', "LIBERAL")ed by president
     if (card == true) {
@@ -155,6 +154,7 @@ io.on('connect', function(socket) {
     }
   });
 
+  // called when the chancellor picks their card
   socket.on('cardPlayed', function(game, card) {
     var id = game.id
     console.log('card has been played: ' + card);
@@ -165,25 +165,31 @@ io.on('connect', function(socket) {
     }
   });
 
-  socket.on('investigate', function(game, id) {
 
+  // called when a president picks who they want to investigate
+  socket.on('investigate', function(game, id) {
     io.to(socket.id).emit('receivedInvestigation', game, id, game.players[id].isFascist);
   });
 
-  socket.on('election', function(id, gameID) {
-    game.currPres = game.players[id];
-    io.emit('newpres', game.currPres, game.players, false, game);
+
+  // called when a special election is called
+  socket.on('election', function(id, game) {
+    games[game.id].prevPres = games[game.id].currPres;
+    games[game.id].currPres = games[game.id].players[id];
+    games[game.id].prevChance = games[game.id].currChance;
+    io.to(game.id).emit('newpres', game.currPres, game.players, false, game);
   });
 
-  socket.on('bullet', function(id) {
-    if (game.players[id].isHitler) {
-      io.emit('end', game, 3)
+  // called with the kill
+  socket.on('bullet', function(id, game) {
+    if (games[game.id].players[id].isHitler) {
+      io.to(games[game.id]).emit('end', game, 3);
     }
-    var dead = game.players[id];
-    game.numCurrPlayres--;
-    delete game.players[id];
+    var dead = games[game.id].players[id];
+    games[game.id].numCurrPlayres--;
+    delete games[game.id].players[id];
 
-    io.emit('kill', game, dead);
+    io.to(game.id).emit('kill', game, dead);
   });
 
   socket.on('disconnect', function() {
@@ -192,10 +198,7 @@ io.on('connect', function(socket) {
     if (games[id] == null) return;
 
     io.to(games[id]).emit('DC', games[id]);
-    for (var key in Object.keys(games[id].players)) {
-
-    }
-    if(games[id]) delete games[id];
+    destroy(games[id]);
 
   });
 
@@ -238,11 +241,11 @@ function jaornein(game) {
       var card = game.cards[game.index];
       game.index++;
       game.playCard(card);
-      io.emit('anarchy', card);
+      io.to(game.id).emit('anarchy', card);
     }
-    io.emit('voteTally', game.jas, game.currPres, game.players, false);
+    io.to(game.id).emit('voteTally', game, false);
     newPres(false, game);
-    io.emit('newpres', game.currPres, game.players, false, game);
+    io.to(game.id).emit('newpres', game, false);
   }
 }
 
@@ -280,6 +283,7 @@ function newPres(first, game) {
   var chance = null;
   var playersOnly = Object.values(game.players);
   game.prevPres = game.currPres;
+  game.prevChance = game.currChance;
   if (first) {
     // if first is true randomly select first president.
     var playerExc = [];
@@ -307,6 +311,15 @@ function newPres(first, game) {
   }
 }
 
+function destroy(game) {
+  var ids = Object.keys(game.players);
+  ids.forEach(function(key) {
+    delete game.players[key];
+    delete connections[key];
+  });
+  delete games[game.id];
+  game = null;
+}
 
 // Starts the server.
 server.listen(5000, function() {
