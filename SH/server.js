@@ -199,7 +199,7 @@ io.on('connect', function(socket) {
 
     io.to(games[id]).emit('DC', games[id]);
     destroy(games[id]);
-
+    console.log('game destroyed');
   });
 
 });
