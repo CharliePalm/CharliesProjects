@@ -6,15 +6,22 @@ import sys
 import random
 import chess.svg
 import numpy as np
+import tensorflow as tnsr
+from tensorflow.keras import layers
+
 
 sys.setrecursionlimit(0x100000)
+class pair:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
-class PalmTree:
+class dataPool:
     def __init__(self, path):
         self.path = path
-        self.white = {}
-        self.black = {}
-        self.moves = []
+        self.white = []
+        self.black = []
+        self.openings = []
         self.gatherData()
 
     def gatherData(self):
@@ -25,68 +32,81 @@ class PalmTree:
                 pgn = open(os.path.join(self.path, file))
                 game = chess.pgn.read_game(pgn)
                 while game is not None:
-                    key = ""
                     i = 0
                     result = game.headers['Result'].strip()
-                    for move in game.mainline_moves():
-                        i += 1
-                        key += str(move) + ','
-                        if i == 2:
-                            break
                     if result == '1-0':
-                        if key in self.white:
-                            self.white[key].append(game)
-                        else:
-                            self.white[key] = []
-                            self.white[key].append(game)
+                        self.getGameData(game, 1)
                     elif result == '0-1':
-                        if key in self.black:
-                            self.black[key].append(game)
-                        else:
-                            self.black[key] = []
-                            self.black[key].append(game)
+                        self.getGameData(game, 0)
                     else:
-                        if key not in self.white and key not in self.black:
-                            self.black[key] = []
-                            self.white[key] = []
-                        elif key not in self.white:
-                            self.white[key] = []
-                        elif key not in self.black:
-                            self.black[key] = []
-
-                        self.white[key].append(game)
-                        self.black[key].append(game)
+                        self.getGameData(game, 1)
+                        self.getGameData(game, 0)
                     try:
                         game = chess.pgn.read_game(pgn)
                     except:
                         game = chess.pgn.read_game(pgn)
 
-    def learn(self):
-        for gameKey in self.white:
-            for game in self.white:
+
+    def getGameData(self, game, whiteOrBlack):
+        iter = 0
+        board = chess.Board()
+        if whiteOrBlack:
+            for move in game.mainline_moves():
+                if iter % 2 != 0:
+                    board.push(move)
+                    iter += 1
+                    continue
+                if not iter:
+                    iter += 1
+                    self.openings.append(move)
+                key = board
+                board.push(move)
+                self.white.append(pair(key, board))
+                iter += 1
+        else:
+            for move in game.mainline_moves():
+                if iter % 2 != 1:
+                    board.push(move)
+                    iter += 1
+                    continue
+                key = board
+                board.push(move)
+                self.white.append(pair(key, board))
+                iter += 1
+
+    def createPickle():
+        tree = PalmTree(os.path.join(os.getcwd(), "games"))
+        out = open(os.path.join(os.getcwd(), "pairWiseData.pt"), 'wb')
+        pickle.dump(tree, out)
+        out.close()
+        print('done')
+
+    def dePickle():
+        pick = open(os.path.join(sys.path[0], "PalmTree"), 'rb')
+        tree = pickle.load(pick)
+        return tree
+
+
+class PalmTree:
+    def __init__(self):
+        self.model = None
+
+
+    def learn(self, pool):
+        for gameKey in pool.white:
+            for game in pool.white:
                 board = chess.Board()
                 i = 0
                 #We're trying to learn from white's victories
+
+
+            for game in pool.black:
+                i = 0
+                #We're trying to learn from black's victories
                 for move in game.mainline_moves():
-                    if i % 2 == 0:
-                        moves = self.predictMove(board)
-                    else:
-                        i += 1
-                        continue
-                    if move in list:
-                        print("correct")
-                    else:
-                        print("wrong")
-                    i += 1
-
-
-
-    def predictMove(self, board):
-        for ()
-
-
-
-
+                    board.push(move);
+                    rank = self.rank(board)
+                    board.pop();
     def pickOpening(self):
         total = 0
         for key in self.white:
@@ -99,79 +119,8 @@ class PalmTree:
                 return key.split(',')[0]
 
     def makeMove(self, board):
-        if (board.turn == chess.WHITE):
-            # white piece decision making
-            if (board.fullmove_number == 1):
-                #pick an opening
-                move = self.pickOpening()
-                self.moves.append(board.peek())
-                return board
-            else:
-                self.moves.append(board.peek())
-                for key in self.white:
-                    print(key)
-                    if (key == str(self.moves[0]) + ',' + str(self.moves[1]) + ','):
-                        break
-                for game in self.white[key]:
-                    i = 0
-                    for move in game.mainline_moves():
-                        if i == len(self.moves):
-                            board.push(move)
-                            self.moves.append(move)
-                            return board
-                        if (move != self.moves[i]):
-                            break
+        print('')
 
-        else:
-            ## if playing the black pieces
-            if (len(self.moves) == 1):
-                self.moves.append(board.peek())
-                defenseOptions = []
-                for key in self.black:
-                    print(key.split(',')[0])
-                    print(self.moves[0])
-                    uci = board.parse_san(self.moves[0])
-                    if key.split(',')[0] == uci:
-                        defenseOptions.append(key.split(',')[1])
-                try:
-                    move = random.choice(defenseOptions)
-                except:
-                    #board.push('e5')
-                    self.moves.append(board.peek())
-                    return board
-                uciMove = chess.Move.from_uci(move[0])
-                board.push(uciMove)
-                self.moves.append(board.peek())
-                return board
-            else:
-                self.moves.append(board.peek())
-                for key in self.white:
-                    if (key == str(self.moves[0]) + ',' + str(self.moves[1]) + ','):
-                        break
-                for game in self.white[key]:
-                    i = 0
-                    for move in game.mainline_moves():
-                        if i == len(self.moves):
-                            board.push(move)
-                            self.moves.append(move)
-                            return board
-                        if (move != self.moves[i]):
-                            break
-
-                for move in board.legal_moves:
-                    print('he')
-
-    def createPickle():
-        tree = PalmTree(os.path.join(sys.path[0], "games"))
-        out = open(os.path.join(sys.path[0], "PalmTree"), 'wb')
-        pickle.dump(tree, out)
-        out.close()
-        print('done')
-
-    def dePickle():
-        pick = open(os.path.join(sys.path[0], "PalmTree"), 'rb')
-        tree = pickle.load(pick)
-        return tree
 
 
 def play(tree):
@@ -197,5 +146,4 @@ def play(tree):
 
 
 if __name__ == '__main__':
-    tree = PalmTree.dePickle()
-    play(tree)
+    pickle = dePicle(os.path.abspath(os.getcwd()) + '/TestGames')
