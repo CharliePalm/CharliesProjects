@@ -9,6 +9,7 @@ import chess.svg
 import numpy as np
 import tensorflow as tf
 import keras
+import Layers
 from keras.models import Sequential
 from keras.layers import Dense
 
@@ -19,11 +20,12 @@ class dataPool:
     def __init__(self, path):
         self.path = path
         self.data = []
-        self.openings = []
-        self.output = []
+        self.openings = {}
+        self.defenses = {}
+        self.outputs = []
         self.gatherData()
-        self.data = np.asarray(self.data, dtype=object)
-        self.output = np.asarray(self.output, dtype=object)
+        self.data = np.asarray(self.data)
+        self.output = np.asarray(self.outputs)
 
     def gatherData(self):
         # creates database based on folder of pgns
@@ -51,35 +53,58 @@ class dataPool:
     def getGameData(self, game, whiteOrBlack):
         iter = 0
         board = chess.Board()
+        opening = None
+        defense = None
         if whiteOrBlack:
             for move in game.mainline_moves():
                 if iter % 2 != 0:
+                    if iter < 4:
+                        self.openings[opening].append(move)
                     board.push(move)
                     iter += 1
                     continue
-                if not iter:
+                if iter < 5:
+                    if (iter == 0):
+                        opening = move
+                        self.openings[opening] = []
+                    if (iter == 2 or iter == 4):
+                        self.openings[opening].append(move)
                     iter += 1
-                    self.openings.append(move)
+                    board.push(move)
+                    continue
 
-                self.data.append([board, board.legal_moves])
-                self.output.append(move)
+                self.data.append(board)
                 board.push(move)
+                self.outputs.append(move)
                 iter += 1
         else:
             for move in game.mainline_moves():
+                if iter == 0:
+                    defense = move
+                    self.defenses[defense] = []
+                    iter += 1
+                    board.push(move)
+                    continue
                 if iter % 2 != 1:
+                    if (iter == 2 or iter == 4):
+                        self.defenses[defense].append(move)
                     board.push(move)
                     iter += 1
                     continue
-                key = board
+                if iter == 1 or iter == 3 or iter == 5:
+                    self.defenses[defense].append(move)
+                    iter += 1
+                    board.push(move)
+                    continue
+
+                self.data.append(board)
                 board.push(move)
-                self.data.append([board, board.legal_moves])
-                self.output.append(move)
+                self.outputs.append(move)
                 iter += 1
 
-    def createPickle(path):
+    def createPickle(path, name):
         tree = dataPool(path)
-        out = open(os.path.join(os.getcwd(), "test_data.pt"), 'wb')
+        out = open(os.path.join(os.getcwd(), name), 'wb')
         pickle.dump(tree, out)
         out.close()
         print('done')
@@ -91,8 +116,15 @@ class dataPool:
 
 
 class PalmTree:
-    def __init__(model):
-        self.model = model
+    def __init__(self, pickle):
+        self.openings = pickle.openings
+        self.defenses = pickle.defenses
+        self.a = 1
+        self.b = 1
+        self.c = 1
+        self.d = 1
+        self.e = 1
+        Layers.model(self, pickle.data, pickle.outputs)
 
 
     def makeMove(self, board):
@@ -100,11 +132,17 @@ class PalmTree:
         board.push(move)
         return board
 
+    def makeMove(self, board):
+        move = Layers.choose(self, board)
+        return move
+
 def play(tree):
     board = chess.Board()
     whiteOrBlack = random.randint(1, 0)
     if (whiteOrBlack):
-        tree.makeMove(board)
+        move = tree.makeMove(board)
+        board.push(move)
+        return board
 
     userInput = ''
     while (userInput != 'q' or userInput != 'Q'):
@@ -123,23 +161,8 @@ def play(tree):
         board = tree.makeMove(board)
 
 def model(data, test_data):
-    model = Sequential()
-    print("starting fit")
-    model.add(keras.Input(shape=(2,)))
-    model.add(Dense(units=32, activation='softmax'))
-    model.add(Dense(units=16, activation='relu'))
-    model.add(Dense(units=1, activation='sigmoid'))
-    model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
-
-    model.fit(data.data, data.output, epochs=1)
-
-    metrics = model.evaluate(test_data.data, test_data.output)
-    print(metrics)
-    play(tree)
+    tree = PalmTree(pool)
 
 if __name__ == '__main__':
-    data = dataPool.dePickle('data.pt')
-    test_data = dataPool.dePickle('test_data.pt')
-    model(data, test_data)
+    data = dataPool.createPickle(os.getcwd() + '/Games', 'data')
+    test_data = dataPool.createPickle(os.getcwd() + '/TestGames', "test_data")
