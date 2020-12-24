@@ -52,21 +52,27 @@ class dataPool:
         defense = None
         if whiteOrBlack:
             for move in game.mainline_moves():
-                if iter % 2 != 0:
-                    if iter < 4:
-                        self.openings[opening].append(move)
-                    board.push(move)
-                    iter += 1
-                    continue
                 if iter < 5:
                     if (iter == 0):
                         opening = move
-                        self.openings[opening] = []
-                    if (iter == 2 or iter == 4):
-                        self.openings[opening].append(move)
+                        if not self.openings[opening]:
+                            self.openings[opening] = {}
+                    elif (iter <= 4):
+                        if iter == 1:
+                            self.openings[opening].append([move])
+                            #defense indicates index
+                            defense = len(self.openings[opening]) - 1
+                        else:
+                            self.openings[opening][defense].append(move)
                     iter += 1
                     board.push(move)
                     continue
+
+                elif iter % 2 != 0:
+                    board.push(move)
+                    iter += 1
+                    continue
+
 
                 self.data.append(board)
                 board.push(move)
@@ -74,23 +80,27 @@ class dataPool:
                 iter += 1
         else:
             for move in game.mainline_moves():
-                if iter == 0:
-                    defense = move
-                    self.defenses[defense] = []
+                if iter < 5:
+                    if (iter == 0):
+                        defense = move
+                        if not self.defenses[defense]:
+                            self.defenses[defense] = {}
+                    elif iter <= 5:
+                        if iter == 1:
+                            self.openings[defense].append([move])
+                            #opening indicates index
+                            opening = len(self.openings[defense]) - 1
+                        else:
+                            self.openings[defense][opening].append(move)
                     iter += 1
                     board.push(move)
                     continue
-                if iter % 2 != 1:
-                    if (iter == 2 or iter == 4):
-                        self.defenses[defense].append(move)
+
+                elif iter % 2 != 0:
                     board.push(move)
                     iter += 1
                     continue
-                if iter == 1 or iter == 3 or iter == 5:
-                    self.defenses[defense].append(move)
-                    iter += 1
-                    board.push(move)
-                    continue
+
 
                 self.data.append(board)
                 board.push(move)
@@ -102,7 +112,6 @@ class dataPool:
         out = open(os.path.join(os.getcwd(), name), 'wb')
         pickle.dump(tree, out)
         out.close()
-        print('done')
 
     def dePickle(name):
         pick = open(os.path.join(sys.path[0], name), 'rb')
@@ -111,9 +120,9 @@ class dataPool:
 
 
 class PalmTree:
-    def __init__(self, pickle, depth):
-        self.openings = pickle.openings
-        self.defenses = pickle.defenses
+    def __init__(self, data, depth):
+        self.openings = data.openings
+        self.defenses = data.defenses
         self.a = 1
         self.b = 1
         self.c = 1
@@ -122,14 +131,49 @@ class PalmTree:
         self.f = 1
         self.g = 1
         Layers.model(self, pickle.data, pickle.outputs, depth)
-        out = open(os.path.join(os.getcwd(), PalmTree), 'wb')
+        out = open(os.path.join(os.getcwd(), '/PalmTree'), 'wb')
         pickle.dump(self, out)
         out.close
 
     def makeMove(self, board):
-        move = Layers.predict(self, board)
+        move = None
+        if (len(stack = board.move_stack()) < 5):
+            if (board.turn == chess.WHITE):
+                if (len(stack) == 0):
+                    for key in self.openings:
+                        total = total + len(openings[key])
+
+                    pick = random.randint(total)
+                    total = 0
+                    for key in self.openings:
+                        total = total + len(openings[key])
+                        if (pick < total):
+                            move = key
+            else:
+                moves = []
+                for move in stack:
+                    moves.append(stack.pop())
+                i = len(moves) - 1
+                if moves[len(moves) - 1] in self.openings:
+                    opening = self.openings[moves[0]]
+                else:
+                    Layers.predict(self, board, 0, 0)
+                    return
+                for z in range(len(move)):
+                    i += 1
+
+        else:
+            move = Layers.predict(self, board)
         board.push(move)
         return board
+
+"""
+    def pickleAI(self):
+        out = open(os.path.join(os.getcwd(), name), 'wb')
+        pickle.dump(self, out)
+        out.close()
+        print('done')
+"""
 
 def play(tree):
     board = chess.Board()
@@ -157,8 +201,10 @@ def play(tree):
 
 def model(data, depth):
     tree = PalmTree(data, depth)
+    tree.pickleAI()
     play(tree)
 
 if __name__ == '__main__':
+    data = dataPool.createPickle((os.getcwd() + '/PalmTreeAI/Games'), 'data')
     data = dataPool.dePickle('data')
     model(data, 3)
