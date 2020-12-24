@@ -7,12 +7,7 @@ import sys
 import random
 import chess.svg
 import numpy as np
-import tensorflow as tf
-import keras
 import Layers
-from keras.models import Sequential
-from keras.layers import Dense
-
 
 sys.setrecursionlimit(0x100000)
 
@@ -116,7 +111,7 @@ class dataPool:
 
 
 class PalmTree:
-    def __init__(self, pickle):
+    def __init__(self, pickle, depth):
         self.openings = pickle.openings
         self.defenses = pickle.defenses
         self.a = 1
@@ -124,17 +119,17 @@ class PalmTree:
         self.c = 1
         self.d = 1
         self.e = 1
-        Layers.model(self, pickle.data, pickle.outputs)
-
+        self.f = 1
+        self.g = 1
+        Layers.model(self, pickle.data, pickle.outputs, depth)
+        out = open(os.path.join(os.getcwd(), PalmTree), 'wb')
+        pickle.dump(self, out)
+        out.close
 
     def makeMove(self, board):
-        move = self.model.predict([board, board.legal_moves])
+        move = Layers.predict(self, board)
         board.push(move)
         return board
-
-    def makeMove(self, board):
-        move = Layers.choose(self, board)
-        return move
 
 def play(tree):
     board = chess.Board()
@@ -147,9 +142,9 @@ def play(tree):
     userInput = ''
     while (userInput != 'q' or userInput != 'Q'):
         if whiteOrBlack:
-            chess.svg.board(board, orientation=chess.Black)
+            chess.svg.board(board, orientation=chess.BLACK)
         else:
-            chess.svg.board(board, orientation=chess.White)
+            chess.svg.board(board, orientation=chess.WHITE)
         while 1:
             userInput = input("\n")
             try:
@@ -160,9 +155,10 @@ def play(tree):
 
         board = tree.makeMove(board)
 
-def model(data, test_data):
-    tree = PalmTree(pool)
+def model(data, depth):
+    tree = PalmTree(data, depth)
+    play(tree)
 
 if __name__ == '__main__':
-    data = dataPool.createPickle(os.getcwd() + '/Games', 'data')
-    test_data = dataPool.createPickle(os.getcwd() + '/TestGames', "test_data")
+    data = dataPool.dePickle('data')
+    model(data, 3)
