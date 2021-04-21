@@ -4,7 +4,7 @@ import urllib
 import json
 import csv
 import unidecode
-
+import os
 
 first = 1
 
@@ -16,7 +16,6 @@ def getDef(verb):
     definitions = []
     for i in range(len(soup)):
         if soup[i:i+7] == '=\"ToWrd':
-            print(i)
             if len(definitions) == 3:
                 break
             i += 7
@@ -33,17 +32,19 @@ def getDef(verb):
 
 #This version uses the included file, but the json was created using the 'french top.txt' file
 def parse():
-    with open("french-verb-conjugation.csv") as file:
+    wordList = []
+    global first
+    with open(os.getcwd() + "/Conjugation tool/french-verb-conjugation.csv") as file:
+
         reader = csv.reader(file, delimiter=',')
         for row in reader:
             if first == 1:
                 first += 1
                 continue
             wordList.append(row[0])
-
+        return wordList
 def generateJson(wordList):
     word = {}
-
     # iterate for each verb in the list
     for currVerb in wordList:
         print(currVerb) #DEBUG: ensure code is operating correctly
@@ -141,7 +142,7 @@ def generateJson(wordList):
                 if (k == 3):
                     break
 
-        with open("/Users/chuckpalm/Documents/Atom projects/Conjugation tool/bigWordFile.json", 'w') as jsonOut:
+        with open(os.getcwd() + "/Conjugation tool/bigWordFile.json", 'w') as jsonOut:
             json.dump(word, jsonOut, indent=4, ensure_ascii=False)
 
 if __name__ == '__main__':

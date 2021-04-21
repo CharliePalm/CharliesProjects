@@ -1,0 +1,7 @@
+*.pyc
+/PalmTreeAI/plaidml-venv
+/node_modules
+package-lock.json
+*/__pycache__
+*.model
+PalmTreeAI/models
