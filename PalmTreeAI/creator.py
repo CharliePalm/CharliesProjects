@@ -117,7 +117,6 @@ class PalmTree:
         x = Conv2D(padding='same', filters=64, use_bias=False, kernel_size=4, data_format="channels_first", name="Conv2D1_in_3")(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
-        '''
         x = Conv2D(padding='same', filters=128, use_bias=False, kernel_size=5, data_format="channels_first", name="Conv2D1_in_4")(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -125,7 +124,6 @@ class PalmTree:
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
         print("building residuals")
-        '''
 
         for i in range(layers):
             x = self.build_residuals(x, i)
@@ -390,7 +388,7 @@ if __name__ == '__main__':
 
 
 
-    tree = PalmTree(0)
+    tree = PalmTree(1)
     opt = keras.optimizers.Adam(lr=.000001)
     #metrics = [tf.metrics.CategoricalAccuracy(name="categorical_accuracy")]
 
@@ -408,7 +406,7 @@ if __name__ == '__main__':
     h = tree.model.fit(x=np.asarray(data.input[:200000]), y=[data.out1[:,0][:200000], data.out1[:,1][:200000], data.out2[:,0][:200000], data.out2[:,1][:200000]], epochs=10, verbose=1, batch_size=256)
 
     print("Pickling tree")
-    data_organization.createPickle(os.getcwd() + '/models/PalmTree', tree)
+    data_organization.createPickle(os.getcwd() + '/models/PalmTree1.1', tree)
     from_row = h.history['from_column_categorical_accuracy']
     from_col = h.history['from_row_categorical_accuracy']
     to_row = h.history['to_row_categorical_accuracy']
