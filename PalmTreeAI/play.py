@@ -17,8 +17,6 @@ def play(tree):
     userInput = ''
     while (userInput != 'q' or userInput != 'Q'):
         print(board)
-
-
         while 1:
             userInput = input("\n")
             try:
@@ -35,6 +33,5 @@ def play(tree):
 
 if __name__=='__main__':
 
-    m = input('which model of albert would you like to play? ')
-    tree = data_organization.dePickle('models/Albert_model_' + m)
+    tree = data_organization.dePickle('models/Palmtree')
     play(tree)

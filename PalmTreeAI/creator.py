@@ -1,12 +1,11 @@
 import os
 
+import plaidml.keras
+plaidml.keras.install_backend()
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 
-os.environ['KERAS_BACKEND'] = "plaidml.keras.backend"
-
-os.environ["RUNFILES_DIR"] = "/Library/Frameworks/Python.framework/Versions/3.8/share/plaidml"
-os.environ["PLAIDML_NATIVE_PATH"] = "/Library/Frameworks/Python.framework/Versions/3.8/lib/libplaidml.dylib"
-import keras
 from data_organization import data_organization
+from lichess_interact import Lichess_Interact
 import datetime
 import pickle
 import chess
@@ -16,9 +15,9 @@ import sys
 import random
 #import chess.svg
 import numpy as np
-import pyopencl as cl
 import copy
 import matplotlib.pyplot as plt
+import keras
 from keras import backend as k
 from keras.engine.topology import Input
 from keras.engine.training import Model
@@ -32,20 +31,35 @@ from keras.callbacks import TensorBoard
 import keras.applications as kapp
 
 
-chess_dict = {
-    'p' : [1,0,0,0,0,0,0,0,0,0,0,0],
-    'P' : [0,0,0,0,0,0,1,0,0,0,0,0],
-    'n' : [0,1,0,0,0,0,0,0,0,0,0,0],
-    'N' : [0,0,0,0,0,0,0,1,0,0,0,0],
-    'b' : [0,0,1,0,0,0,0,0,0,0,0,0],
-    'B' : [0,0,0,0,0,0,0,0,1,0,0,0],
-    'r' : [0,0,0,1,0,0,0,0,0,0,0,0],
-    'R' : [0,0,0,0,0,0,0,0,0,1,0,0],
-    'q' : [0,0,0,0,1,0,0,0,0,0,0,0],
-    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0],
-    'k' : [0,0,0,0,0,1,0,0,0,0,0,0],
-    'K' : [0,0,0,0,0,0,0,0,0,0,0,1],
-    '.' : [0,0,0,0,0,0,0,0,0,0,0,0],
+chess_dict_white_to_move = {
+    'p' : [1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    'P' : [0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+    'n' : [0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+    'N' : [0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+    'b' : [0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+    'B' : [0,0,0,0,0,0,0,0,1,0,0,0,0,0],
+    'r' : [0,0,0,1,0,0,0,0,0,0,0,0,0,0],
+    'R' : [0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+    'q' : [0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+    'k' : [0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+    'K' : [0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    '.' : [0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+}
+chess_dict_black_to_move = {
+    'p' : [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    'P' : [0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+    'n' : [0,1,0,0,0,0,0,0,0,0,0,0,0,1],
+    'N' : [0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+    'b' : [0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+    'B' : [0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+    'r' : [0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+    'R' : [0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+    'q' : [0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+    'k' : [0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+    'K' : [0,0,0,0,0,0,0,0,0,0,0,1,0,1],
+    '.' : [0,0,0,0,0,0,0,0,0,0,0,0,1,1],
 }
 column_dict = {
     'a' : [1,0,0,0,0,0,0,0],
@@ -68,10 +82,6 @@ row_dict = {
     '7' : [0,0,0,0,0,0,1,0],
     '8' : [0,0,0,0,0,0,0,1],
 }
-
-
-
-
 sys.setrecursionlimit(0x100000)
 
 
@@ -79,6 +89,7 @@ class PalmTree:
     def __init__(self, layers):
         self.model = self.model(layers)
         print(self.model.summary())
+        self.lichess = Lichess_Interact()
 
 
 
@@ -95,7 +106,7 @@ class PalmTree:
     #modeled after the supervised learning approach in the chess alpha zero model
     def model(self, layers):
         print("building input")
-        input = x = Input((12, 8, 8))
+        input = x = Input((14, 8, 8))
 
         x = Conv2D(padding='same', filters=24, kernel_size=2, use_bias=False, data_format="channels_first", name="Conv2D_in_1")(x)
         x = BatchNormalization(axis=1, name="input_batchnorm")(x)
@@ -106,6 +117,7 @@ class PalmTree:
         x = Conv2D(padding='same', filters=64, use_bias=False, kernel_size=4, data_format="channels_first", name="Conv2D1_in_3")(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
+        '''
         x = Conv2D(padding='same', filters=128, use_bias=False, kernel_size=5, data_format="channels_first", name="Conv2D1_in_4")(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -113,7 +125,7 @@ class PalmTree:
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
         print("building residuals")
-
+        '''
 
         for i in range(layers):
             x = self.build_residuals(x, i)
@@ -226,18 +238,23 @@ class PalmTree:
         x = Add(name="Residual_Add_" + str(i))([input, x])
         return x
 
-    def create_board(self, board):
+    def create_board(self, board, whiteOrBlack):
         map = board.piece_map()
         inputBoard = []
         iter = 0
         for i in range(1, 9):
             row = []
             for j in range(1, 9):
-
                 if iter not in map:
-                    row.append(chess_dict['.'])
+                    if whiteOrBlack:
+                        row.append(chess_dict_white_to_move['.'])
+                    else:
+                        row.append(chess_dict_black_to_move['.'])
                 else:
-                    row.append(chess_dict[map[iter].symbol()])
+                    if whiteOrBlack:
+                        row.append(chess_dict_white_to_move[map[iter].symbol()])
+                    else:
+                        row.append(chess_dict_black_to_move[map[iter].symbol()])
                 iter += 1
             inputBoard.append(row)
         return inputBoard
@@ -245,10 +262,8 @@ class PalmTree:
 
 
     def make_move(self, board, whiteOrBlack):
-        input_board = self.create_board(board)
+        input_board = self.create_board(board, whiteOrBlack)
         input_board = np.transpose(input_board)
-        if not whiteOrBlack:
-            input_board = np.flip(input_board)
         move = self.model.predict_on_batch([[input_board]])
         move_copy = copy.deepcopy(move)
         for i in range(len(move_copy)):
@@ -369,13 +384,13 @@ def play(tree):
 if __name__ == '__main__':
     print("Currently it is " + str(datetime.datetime.time(datetime.datetime.now())))
 
-    test_data = data_organization.dePickle('data/test_data')
+    test_data = data_organization.dePickle('data/test_data.ptd')
     test_data.out1 = np.asarray(test_data.out1)
     test_data.out2 = np.asarray(test_data.out2)
 
 
 
-    tree = PalmTree(4)
+    tree = PalmTree(0)
     opt = keras.optimizers.Adam(lr=.000001)
     #metrics = [tf.metrics.CategoricalAccuracy(name="categorical_accuracy")]
 
@@ -383,21 +398,24 @@ if __name__ == '__main__':
 
     print("done compiling, depickling data")
 
-    data = data_organization.dePickle('data/data')
+    data = data_organization.dePickle('data/data.ptd')
     data.out1 = np.asarray(data.out1)
     data.out2 = np.asarray(data.out2)
 
     for i in range(len(data.input)):
         data.input[i] = np.transpose(data.input[i])
     print('done depickling data: fitting')
-    h = tree.model.fit(x=np.asarray(data.input[0:3000]), y=[data.out1[:,0][0:3000], data.out1[:,1][0:3000], data.out2[:,0][0:3000], data.out2[:,1][0:3000]], epochs=200, verbose=1, batch_size=4 )
+    h = tree.model.fit(x=np.asarray(data.input[:200000]), y=[data.out1[:,0][:200000], data.out1[:,1][:200000], data.out2[:,0][:200000], data.out2[:,1][:200000]], epochs=10, verbose=1, batch_size=256)
+
     print("Pickling tree")
-    data_organization.createPickle(os.getcwd() + '/models/Albert_model_14', tree)
+    data_organization.createPickle(os.getcwd() + '/models/PalmTree', tree)
     from_row = h.history['from_column_categorical_accuracy']
     from_col = h.history['from_row_categorical_accuracy']
     to_row = h.history['to_row_categorical_accuracy']
     to_col = h.history['to_column_categorical_accuracy']
     epoch_count = range(1, len(to_row) + 1)
+
+
     plt.plot(epoch_count, to_col)
     plt.plot(epoch_count, from_row)
     plt.plot(epoch_count, to_row)

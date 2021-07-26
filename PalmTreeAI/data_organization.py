@@ -14,24 +14,39 @@ import sys
 import random
 import chess.svg
 import numpy as np
-import pyopencl as cl
 import hashlib
 import copy
 
-chess_dict = {
-    'p' : [1,0,0,0,0,0,0,0,0,0,0,0,0],
-    'P' : [0,0,0,0,0,0,1,0,0,0,0,0,0],
-    'n' : [0,1,0,0,0,0,0,0,0,0,0,0,0],
-    'N' : [0,0,0,0,0,0,0,1,0,0,0,0,0],
-    'b' : [0,0,1,0,0,0,0,0,0,0,0,0,0],
-    'B' : [0,0,0,0,0,0,0,0,1,0,0,0,0],
-    'r' : [0,0,0,1,0,0,0,0,0,0,0,0,0],
-    'R' : [0,0,0,0,0,0,0,0,0,1,0,0,0],
-    'q' : [0,0,0,0,1,0,0,0,0,0,0,0,0],
-    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0,0],
-    'k' : [0,0,0,0,0,1,0,0,0,0,0,0,0],
-    'K' : [0,0,0,0,0,0,0,0,0,0,0,1,0],
-    '.' : [0,0,0,0,0,0,0,0,0,0,0,0,1],
+chess_dict_white_to_move = {
+    'p' : [1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    'P' : [0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+    'n' : [0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+    'N' : [0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+    'b' : [0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+    'B' : [0,0,0,0,0,0,0,0,1,0,0,0,0,0],
+    'r' : [0,0,0,1,0,0,0,0,0,0,0,0,0,0],
+    'R' : [0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+    'q' : [0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+    'k' : [0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+    'K' : [0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    '.' : [0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+}
+
+chess_dict_black_to_move = {
+    'p' : [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    'P' : [0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+    'n' : [0,1,0,0,0,0,0,0,0,0,0,0,0,1],
+    'N' : [0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+    'b' : [0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+    'B' : [0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+    'r' : [0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+    'R' : [0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+    'q' : [0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    'Q' : [0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+    'k' : [0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+    'K' : [0,0,0,0,0,0,0,0,0,0,0,1,0,1],
+    '.' : [0,0,0,0,0,0,0,0,0,0,0,0,1,1],
 }
 column_dict = {
     'a' : [1,0,0,0,0,0,0,0],
@@ -61,8 +76,7 @@ class data_organization:
         self.input = []
         self.out1 = []
         self.out2 = []
-        self.openings = {}
-        self.defenses = {}
+        self.opening_tree = {}
         self.gather_data()
         #self.input = np.asarray(self.input)
         #self.out1 = np.asarray(self.out1)
@@ -76,7 +90,7 @@ class data_organization:
         return obj
 
     def dePickle(name):
-        pick = open(os.path.join(sys.path[0], name), 'rb')
+        pick = open(os.path.join(os.getcwd(), name), 'rb')
         tree = pickle.load(pick)
         return tree
 
@@ -91,30 +105,31 @@ class data_organization:
                     i = 0
                     result = game.headers['Result'].strip()
                     if result == '1-0':
-                        self.get_game_data_no_openings(game, 1)
+                        self.get_game_data(game, 1)
                     elif result == '0-1':
-                        self.get_game_data_no_openings(game, 0)
+                        self.get_game_data(game, 0)
                     else:
-                        self.get_game_data_no_openings(game, 1)
-                        self.get_game_data_no_openings(game, 0)
+                        self.get_game_data(game, 1)
+                        self.get_game_data(game, 0)
                     try:
                         game = chess.pgn.read_game(pgn)
                     except:
                         game = chess.pgn.read_game(pgn)
 
 
-    def get_game_data_no_openings(self, game, whiteOrBlack):
+    def get_game_data(self, game, whiteOrBlack):
         outer_iter = 0
         board = chess.Board()
+        open = []
         if whiteOrBlack:
-
             for move in game.mainline_moves():
+                if outer_iter < 8:
+                    open.append(chess.Move.uci(move))
                 if outer_iter % 2 != 0:
                     outer_iter = outer_iter + 1
                     board.push(move)
                     continue
 
-                #newBoard = copy.deepcopy(board)
                 map = board.piece_map()
                 inputBoard = []
                 iter = 0
@@ -123,15 +138,15 @@ class data_organization:
                     for j in range(1, 9):
 
                         if iter not in map:
-                            row.append(chess_dict['.'])
+                            row.append(chess_dict_white_to_move['.'])
                         else:
-                            row.append(chess_dict[map[iter].symbol()])
+                            row.append(chess_dict_white_to_move[map[iter].symbol()])
                         iter += 1
                     inputBoard.append(row)
 
                 self.input.append(np.asarray(inputBoard))
 
-                output = self.getOutput(chess.Move.uci(move))
+                output = self.get_output(chess.Move.uci(move))
 
                 self.out1.append(output[0])
                 self.out2.append(output[1])
@@ -140,41 +155,36 @@ class data_organization:
 
         else:
             for move in game.mainline_moves():
+                if outer_iter < 8:
+                    open.append(chess.Move.uci(move))
                 if outer_iter % 2 != 1:
                     outer_iter += 1
                     board.push(move)
                     continue
 
-                #newBoard = copy.deepcopy(board)
                 map = board.piece_map()
                 inputBoard = []
-                iter = 0
                 for i in range(1, 9):
                     row = []
                     for j in range(1, 9):
-
-                        if iter not in map:
-                            row.append(chess_dict['.'])
+                        if i + j not in map:
+                            row.append(chess_dict_black_to_move['.'])
                         else:
-                            row.append(chess_dict[map[iter].symbol()])
-                        iter += 1
+                            row.append(chess_dict_black_to_move[map[i + j].symbol()])
                     inputBoard.append(row)
 
+                self.input.append(np.asarray(inputBoard))
 
-                self.input.append(np.asarray(np.flip(inputBoard)))
-                output = self.getOutput(chess.Move.uci(move))
-                if np.allclose(np.zeros(shape=(8,8,12)), inputBoard):
-                    print('zero board')
-                    print(map)
+                output = self.get_output(chess.Move.uci(move))
+
                 self.out1.append(output[0])
                 self.out2.append(output[1])
                 board.push(move)
                 outer_iter += 1
+        self.add_line(open)
 
-
-
-    #this function works to convert a move to a column probability vector
-    def getOutput(self, move):
+    # this function works to convert a move to a column "probability" vector
+    def get_output(self, move):
         arr = [[], []]
         arr[0].append(column_dict[move[0]])
         arr[0].append(row_dict[move[1]])
@@ -182,14 +192,24 @@ class data_organization:
         arr[1].append(row_dict[move[3]])
         return arr
 
+    # adds an opening line to the opening tree
+    def add_line(self, open):
+        node = self.opening_tree
+        i = 0
+        while i < len(open):
+            if open[i] not in node:
+                node[open[i]] = {}
+                node = node[open[i]]
+            else:
+                node = node[open[i]]
+            i += 1
+
+
 
 
 if __name__ == '__main__':
-
     data = data_organization(os.getcwd() + '/Games')
-    data = data_organization.createPickle(os.getcwd() + '/data/data', data)
-
-
-
+    wd = os.getcwd()
+    data = data_organization.createPickle(wd + '/data/data.ptd', data)
     test_data = data_organization(os.getcwd() + '/TestGames')
-    test_data = data_organization.createPickle(os.getcwd() + '/data/test_data', test_data)
+    test_data = data_organization.createPickle(os.getcwd() + '/data/test_data.ptd', test_data)
