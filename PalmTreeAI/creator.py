@@ -268,6 +268,12 @@ class PalmTree:
             move_copy[i] = np.sort(move_copy[i])
 
         possible_moves = {}
+        '''
+        this terribly confusing loop finds the moves with
+        the highest level of probability and stores them
+        in a dictionary where moves point to statistical likelihoods
+        as predicted by the tree
+        '''
         for i in range(8):
             z1 = np.zeros(shape=(8))
             z1[i] = 1
@@ -288,6 +294,7 @@ class PalmTree:
                         s -= move[3][0][l]
                     s -= move[2][0][k]
                 s -= move[1][0][j]
+        
         sums = list(possible_moves.keys())
         sums.sort()
         sums.reverse()
