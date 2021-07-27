@@ -103,6 +103,7 @@ class PalmTree:
             self.build_residuals(x, i)
         return Model(input, [out1, out2], name="palmtree")
 
+
     #modeled after the supervised learning approach in the chess alpha zero model
     def model(self, layers):
         print("building input")
@@ -120,9 +121,6 @@ class PalmTree:
         x = Conv2D(padding='same', filters=128, use_bias=False, kernel_size=5, data_format="channels_first", name="Conv2D1_in_4")(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
-        x = Conv2D(padding='same', filters=256, use_bias=False, kernel_size=6, data_format="channels_first", name="Conv2D1_in_5")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Activation("relu")(x)
         print("building residuals")
 
         for i in range(layers):
@@ -136,10 +134,9 @@ class PalmTree:
         x = Conv2D(padding='same', filters=64, kernel_size=3, data_format="channels_first")(x)
         x = Activation("relu")(x)
         x = BatchNormalization(axis=1)(x)
-        x = Conv2D(filters=32, kernel_size=3, use_bias=False, data_format="channels_first")(x)
-        #x = MaxPooling2D(pool_size=(2,2), padding='valid')(x)
+        out = Conv2D(filters=32, kernel_size=3, use_bias=False, data_format="channels_first")(x)
 
-        x = Flatten()(x)
+        x = Flatten()(out)
         x = Dense(512)(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -152,17 +149,7 @@ class PalmTree:
         from_column = Dense(8, activation="softmax", name='from_column')(x)
 
 
-
-        x = Conv2D(padding='same', filters=128, kernel_size=3, data_format="channels_first")(out)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(padding='same', filters=64, kernel_size=3, data_format="channels_first")(x)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(filters=32, kernel_size=3, use_bias=False, data_format="channels_first")(x)
-        #x = MaxPooling2D(pool_size=(2,2), padding='valid')(x)
-
-        x = Flatten()(x)
+        x = Flatten()(out)
         x = Dense(512)(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -175,18 +162,7 @@ class PalmTree:
         from_row = Dense(8, activation="softmax", name='from_row')(x)
 
 
-
-        x = Conv2D(padding='same', filters=128, kernel_size=3, data_format="channels_first")(out)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(padding='same', filters=64, kernel_size=3, data_format="channels_first")(x)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(filters=32, kernel_size=3, use_bias=False, data_format="channels_first")(x)
-        #x = MaxPooling2D(pool_size=(2,2), padding='valid')(x)
-
-
-        x = Flatten()(x)
+        x = Flatten()(out)
         x = Dense(512)(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -198,17 +174,7 @@ class PalmTree:
         x = BatchNormalization(axis=1)(x)
         to_column = Dense(8, activation="softmax", name='to_column')(x)
 
-
-        x = Conv2D(padding='same', filters=128, kernel_size=3, data_format="channels_first")(out)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(padding='same', filters=64, kernel_size=3, data_format="channels_first")(x)
-        x = Activation("relu")(x)
-        x = BatchNormalization(axis=1)(x)
-        x = Conv2D(filters=32, kernel_size=3, use_bias=False, data_format="channels_first")(x)
-        #x = MaxPooling2D(pool_size=(2,2), padding='valid')(x)
-
-        x = Flatten()(x)
+        x = Flatten()(out)
         x = Dense(512)(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
@@ -227,10 +193,10 @@ class PalmTree:
     def build_residuals(self, x, i):
         print("building residual layer ", i)
         input = x
-        x = Conv2D(padding='same', filters=256, use_bias=False, kernel_size=6, data_format="channels_first", name="Residual_Conv2D1_" + str(i))(x)
+        x = Conv2D(padding='same', filters=128, use_bias=False, kernel_size=6, data_format="channels_first", name="Residual_Conv2D1_" + str(i))(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
-        x = Conv2D(padding='same', filters=256, use_bias=False, kernel_size=6, data_format="channels_first", name="Residual_Conv2D2_"+ str(i))(x)
+        x = Conv2D(padding='same', filters=128, use_bias=False, kernel_size=6, data_format="channels_first", name="Residual_Conv2D2_"+ str(i))(x)
         x = BatchNormalization(axis=1)(x)
         x = Activation("relu")(x)
         x = Add(name="Residual_Add_" + str(i))([input, x])
@@ -294,7 +260,7 @@ class PalmTree:
                         s -= move[3][0][l]
                     s -= move[2][0][k]
                 s -= move[1][0][j]
-        
+
         sums = list(possible_moves.keys())
         sums.sort()
         sums.reverse()

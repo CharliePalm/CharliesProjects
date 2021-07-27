@@ -29,10 +29,10 @@ async def main(tree):
             await make_move(tree, id)
         print('waiting for events')
         time.sleep(3)
-            
+
 async def make_move(tree, id):
     r = await tree.lichess.stream_game_state(id)
-    
+
     moves = r[0]['state']['moves'].split()
     white = False
     if r[0]['white']['name'] == 'PalmTreeBot':
@@ -51,7 +51,7 @@ async def make_move(tree, id):
 
 if __name__ == '__main__':
     print('getting PalmTree ready')
-    tree = data_organization.dePickle('models/PalmTree')
+    tree = data_organization.dePickle('models/PalmTree1.1')
     tree.lichess = Lichess_Interact()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main(tree))
