@@ -28,7 +28,7 @@ async def main(tree):
                 tree.lichess.games[id] = chess.Board()
             await make_move(tree, id)
         print('waiting for events')
-        time.sleep(3)
+        time.sleep(1)
 
 async def make_move(tree, id):
     r = await tree.lichess.stream_game_state(id)
@@ -51,7 +51,7 @@ async def make_move(tree, id):
 
 if __name__ == '__main__':
     print('getting PalmTree ready')
-    tree = data_organization.dePickle('models/PalmTree1.1')
+    tree = data_organization.dePickle('models/PalmTree')
     tree.lichess = Lichess_Interact()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main(tree))

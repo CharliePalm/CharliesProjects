@@ -1,10 +1,4 @@
 import os
-"""
-os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-os.environ["RUNFILES_DIR"] = "/Library/Frameworks/Python.framework/Versions/3.7/share/plaidml"
-os.environ["PLAIDML_NATIVE_PATH"] = "/Library/Frameworks/Python.framework/Versions/3.8/lib/libplaidml.dylib"
-"""
-
 
 import pickle
 import chess
@@ -71,13 +65,16 @@ row_dict = {
 }
 
 class data_organization:
-    def __init__(self, path):
+    def __init__(self, path, obj=False):
         self.path = path
         self.input = []
-        self.out1 = []
-        self.out2 = []
+        if obj:
+            self.output = []
+        else:
+            self.out1 = []
+            self.out2 = []
         self.opening_tree = {}
-        self.gather_data()
+        self.gather_data(obj)
         #self.input = np.asarray(self.input)
         #self.out1 = np.asarray(self.out1)
         #self.out2 = np.asarray(self.out2)
@@ -95,7 +92,7 @@ class data_organization:
         return tree
 
 
-    def gather_data(self):
+    def gather_data(self, obj):
         for file in os.listdir(self.path):
             print("reading " + file)
             if (file.endswith('pgn')):
@@ -105,28 +102,32 @@ class data_organization:
                     i = 0
                     result = game.headers['Result'].strip()
                     if result == '1-0':
-                        self.get_game_data(game, 1)
+                        self.get_game_data(game, 1, obj)
                     elif result == '0-1':
-                        self.get_game_data(game, 0)
+                        self.get_game_data(game, 0, obj)
                     else:
-                        self.get_game_data(game, 1)
-                        self.get_game_data(game, 0)
+                        self.get_game_data(game, 1, obj)
+                        self.get_game_data(game, 0, obj)
                     try:
                         game = chess.pgn.read_game(pgn)
                     except:
                         game = chess.pgn.read_game(pgn)
 
 
-    def get_game_data(self, game, whiteOrBlack):
+    def get_game_data(self, game, whiteOrBlack, obj):
         outer_iter = 0
         board = chess.Board()
         open = []
         if whiteOrBlack:
             for move in game.mainline_moves():
-                if outer_iter < 8:
-                    open.append(chess.Move.uci(move))
                 if outer_iter % 2 != 0:
                     outer_iter = outer_iter + 1
+                    board.push(move)
+                    continue
+
+                if obj:
+                    self.input.append(copy.deepcopy(board))
+                    self.output.append(move.uci())
                     board.push(move)
                     continue
 
@@ -155,13 +156,15 @@ class data_organization:
 
         else:
             for move in game.mainline_moves():
-                if outer_iter < 8:
-                    open.append(chess.Move.uci(move))
                 if outer_iter % 2 != 1:
                     outer_iter += 1
                     board.push(move)
                     continue
-
+                if obj:
+                    self.input.append(copy.deepcopy(board))
+                    self.output.append(move.uci())
+                    board.push(move)
+                    continue
                 map = board.piece_map()
                 inputBoard = []
                 for i in range(1, 9):
@@ -208,8 +211,24 @@ class data_organization:
 
 
 if __name__ == '__main__':
-    data = data_organization(os.getcwd() + '/Games')
+    a = 2
+    while a != 1 and a != 0:
+        a = input('object data (1) or one hot data (0)?\n')
+        try:
+            a = int(a)
+        except:
+            continue
+    if a:
+        data = data_organization(os.getcwd() + '/Games', True)
+        #test_data = data_organization(os.getcwd() + '/TestGames', True)
+    else:
+        data = data_organization(os.getcwd() + '/Games')
+        test_data = data_organization(os.getcwd() + '/TestGames', True)
+    print('pickling data')
     wd = os.getcwd()
-    data = data_organization.createPickle(wd + '/data/data.ptd', data)
-    test_data = data_organization(os.getcwd() + '/TestGames')
-    test_data = data_organization.createPickle(os.getcwd() + '/data/test_data.ptd', test_data)
+    if a:
+        data_organization.createPickle(wd + '/data/obj_data.ptd', data)
+        #data_organization.createPickle(wd + '/data/obj_test_data.ptd', test_data)
+    else:
+        data_organization.createPickle(wd + '/data/data.ptd', data)
+        data_organization.createPickle(wd + '/data/test_data.ptd', test_data)

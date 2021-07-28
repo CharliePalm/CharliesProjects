@@ -1,9 +1,5 @@
 import os
 
-import plaidml.keras
-plaidml.keras.install_backend()
-os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
-
 from data_organization import data_organization
 from lichess_interact import Lichess_Interact
 import datetime
@@ -17,18 +13,9 @@ import random
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
-import keras
-from keras import backend as k
-from keras.engine.topology import Input
-from keras.engine.training import Model
-from keras.layers.convolutional import Conv2D
-from keras.layers.core import Activation, Dense, Flatten
-from keras.layers import MaxPooling2D
-from keras.layers.merge import Add
-from keras.layers.normalization import BatchNormalization
-from keras.regularizers import l2
-from keras.callbacks import TensorBoard
-import keras.applications as kapp
+import tensorflow
+from tensorflow.keras.layers import Flatten, Add, Input, Dense, Conv2D, BatchNormalization, Activation, DepthwiseConv2D
+
 
 
 chess_dict_white_to_move = {
@@ -87,8 +74,7 @@ sys.setrecursionlimit(0x100000)
 
 class PalmTree:
     def __init__(self, layers):
-        self.model = self.model(layers)
-        print(self.model.summary())
+        self.model = None
         self.lichess = Lichess_Interact()
 
 
@@ -186,7 +172,7 @@ class PalmTree:
         to_row = Dense(8, activation="softmax", name='to_row')(x)
 
         print("Done building model")
-        return Model(input, [from_column, from_row, to_column, to_row], name="palmtree")
+        self.model = tf.keras.Model(input, [from_column, from_row, to_column, to_row], name="palmtree")
 
 
 
@@ -362,10 +348,12 @@ if __name__ == '__main__':
 
 
     tree = PalmTree(1)
+    tree.buildModel();
     opt = keras.optimizers.Adam(lr=.000001)
-    #metrics = [tf.metrics.CategoricalAccuracy(name="categorical_accuracy")]
+    metrics = tf.keras.metrics.MeanAbsolutePercentageError()
+    loss = tf.keras.losses.MeanAbsoluteError()
 
-    tree.model.compile(optimizer=opt, metrics=['categorical_accuracy'], loss='categorical_crossentropy')
+    tree.model.compile(optimizer=opt, metrics=metrics, loss=loss)
 
     print("done compiling, depickling data")
 
