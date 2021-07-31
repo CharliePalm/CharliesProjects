@@ -6,6 +6,7 @@ import numpy as np
 from data_organization import data_organization
 from creator import PalmTree
 from lichess_interact import Lichess_Interact
+from A_star import a_star_model
 HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer KFhBB3KzFXbUUCYY'
@@ -51,7 +52,7 @@ async def make_move(tree, id):
 
 if __name__ == '__main__':
     print('getting PalmTree ready')
-    tree = data_organization.dePickle('models/PalmTree')
+    tree = data_organization.dePickle('models/a_star_v1_obj')
     tree.lichess = Lichess_Interact()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main(tree))

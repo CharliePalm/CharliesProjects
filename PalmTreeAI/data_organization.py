@@ -213,7 +213,7 @@ class data_organization:
 if __name__ == '__main__':
     a = 2
     while a != 1 and a != 0:
-        a = input('object data (1) or one hot data (0)?\n')
+        a = input('test object data (2), object data (1) one hot data (0)?\n')
         try:
             a = int(a)
         except:

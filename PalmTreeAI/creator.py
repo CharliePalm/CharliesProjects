@@ -5,6 +5,7 @@ from lichess_interact import Lichess_Interact
 import datetime
 import pickle
 import chess
+import dill
 #import chess.pgn
 #import chess.svg
 import sys
