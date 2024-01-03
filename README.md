@@ -1,5 +1,5 @@
 # CharliesProjects
-A series of projects that I've been working on including:
+This is a relic from when I was in college and wanted personal projects to beef up my resume. I've decided to leave it here as a fun way to look back. (Especially at the Secret Hitler. Young Charlie knew NOTHING about wed development back then lol)
 
 An attempt at bringing the popular tabletop game Secret Hitler to the web through node.JS (Currently undergoing rehaul)
 
